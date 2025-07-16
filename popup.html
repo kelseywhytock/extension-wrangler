@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      width: 400px;
+      max-height: 600px;
+      margin: 0;
+      padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+      font-size: 14px;
+      background: #f8f9fa;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1a1a1a;
+    }
+
+    .btn {
+      padding: 6px 12px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: #4285f4;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #3367d6;
+    }
+
+    .btn-secondary {
+      background: #e8eaed;
+      color: #5f6368;
+    }
+
+    .btn-secondary:hover {
+      background: #dadce0;
+    }
+
+    .search-container {
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    .search-container.show {
+      display: block;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: #4285f4;
+    }
+
+    .tabs {
+      display: flex;
+      margin-bottom: 16px;
+      border-bottom: 1px solid #dadce0;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 8px 16px;
+      text-align: center;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .tab.active {
+      border-bottom-color: #4285f4;
+      color: #4285f4;
+      font-weight: 500;
+    }
+
+    .content {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .group {
+      background: white;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .group-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .group-info {
+      flex: 1;
+    }
+
+    .group-name {
+      font-weight: 600;
+      color: #1a1a1a;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .group-stats {
+      font-size: 12px;
+      color: #5f6368;
+      margin-top: 2px;
+    }
+
+    .group-toggle {
+      width: 44px;
+      height: 24px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+
+    .group-toggle.enabled {
+      background: #4285f4;
+    }
+
+    .group-toggle.disabled {
+      background: #dadce0;
+    }
+
+    .group-toggle.mixed {
+      background: #fbbc04;
+    }
+
+    .group-toggle::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 20px;
+      height: 20px;
+      background: white;
+      border-radius: 50%;
+      transition: all 0.2s;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .group-toggle.enabled::after {
+      transform: translateX(20px);
+    }
+
+    .group-toggle.mixed::after {
+      transform: translateX(10px);
+    }
+
+    .group-extensions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .extension-item {
+      display: flex;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .extension-item:last-child {
+      border-bottom: none;
+    }
+
+    .extension-icon {
+      width: 16px;
+      height: 16px;
+      margin-right: 8px;
+      border-radius: 2px;
+    }
+
+    .extension-name {
+      flex: 1;
+      font-size: 13px;
+      color: #1a1a1a;
+    }
+
+    .extension-toggle {
+      width: 32px;
+      height: 16px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.2s;
+    }
+
+    .extension-toggle.enabled {
+      background: #4285f4;
+    }
+
+    .extension-toggle.disabled {
+      background: #dadce0;
+    }
+
+    .extension-toggle::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 12px;
+      height: 12px;
+      background: white;
+      border-radius: 50%;
+      transition: all 0.2s;
+    }
+
+    .extension-toggle.enabled::after {
+      transform: translateX(16px);
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+    }
+
+    .modal-content {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 24px;
+      border-radius: 8px;
+      width: 320px;
+      max-width: 90%;
+    }
+
+    .modal-header {
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+
+    .modal-input {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      margin-bottom: 16px;
+      box-sizing: border-box;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .always-on-badge {
+      background: #34a853;
+      color: white;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 500;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .empty-state {
+      text-align: center;
+      color: #5f6368;
+      padding: 32px 16px;
+    }
+
+
+
+    .extension-groups {
+      font-size: 11px;
+      color: #5f6368;
+      margin-top: 4px;
+    }
+
+    .group-indicator {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 4px;
+    }
+
+    .group-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #4285f4;
+    }
+
+    .group-dot.always-enabled {
+      background: #34a853;
+    }
+
+    .group-text {
+      font-size: 11px;
+      color: #5f6368;
+    }
+
+    .add-to-group-btn {
+      padding: 4px 8px;
+      font-size: 10px;
+      border-radius: 4px;
+      background: #e8eaed;
+      border: none;
+      cursor: pointer;
+      margin-top: 4px;
+    }
+
+    .add-to-group-btn:hover {
+      background: #dadce0;
+    }
+
+    .extension-search {
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="title">Extension Wrangler</div>
+    <div style="display: flex; gap: 8px;">
+      <button class="btn btn-secondary" id="openSettingsBtn">Settings</button>
+      <button class="btn btn-primary" id="createGroupBtn">New Group</button>
+    </div>
+  </div>
+
+  <div class="search-container">
+    <input type="text" class="search-input" id="searchInput" placeholder="Search extensions...">
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="groups">Groups</div>
+    <div class="tab" data-tab="search">Search</div>
+  </div>
+
+  <div class="content">
+    <div id="groupsContent">
+      <div class="empty-state" id="emptyState">
+        No groups created yet. Click "New Group" to get started.
+      </div>
+    </div>
+
+    <div id="searchContent" class="hidden">
+      <div id="searchResults"></div>
+    </div>
+  </div>
+
+  <!-- Create Group Modal -->
+  <div class="modal" id="createGroupModal">
+    <div class="modal-content">
+      <div class="modal-header">Create New Group</div>
+      <input type="text" class="modal-input" id="groupNameInput" placeholder="Group name">
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="cancelCreateBtn">Cancel</button>
+        <button class="btn btn-primary" id="confirmCreateBtn">Create</button>
+      </div>
+    </div>
+  </div>
+
+
+
+  <div style="text-align: center; padding: 12px 0 8px 0; border-top: 1px solid #e8eaed; margin-top: 8px; font-size: 11px; color: #5f6368;">
+    For advanced features like editing groups, visit Settings
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

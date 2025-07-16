@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Extension Wrangler Settings</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+      background: #f8f9fa;
+      color: #1a1a1a;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 32px 24px;
+    }
+
+    .header {
+      background: white;
+      border-radius: 12px;
+      padding: 32px;
+      margin-bottom: 32px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .header h1 {
+      font-size: 32px;
+      font-weight: 600;
+      color: #1a1a1a;
+      margin-bottom: 8px;
+    }
+
+    .header p {
+      font-size: 16px;
+      color: #5f6368;
+    }
+
+    .main-content {
+      display: grid;
+      grid-template-columns: 1fr 400px;
+      gap: 32px;
+      align-items: start;
+    }
+
+    .groups-section {
+      background: white;
+      border-radius: 12px;
+      padding: 32px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .sidebar {
+      background: white;
+      border-radius: 12px;
+      padding: 32px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      position: sticky;
+      top: 32px;
+    }
+
+    .section-title {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 24px;
+      color: #1a1a1a;
+    }
+
+    .section-subtitle {
+      font-size: 18px;
+      font-weight: 500;
+      margin-bottom: 16px;
+      color: #1a1a1a;
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+      text-decoration: none;
+      display: inline-block;
+      text-align: center;
+    }
+
+    .btn-primary {
+      background: #4285f4;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #3367d6;
+    }
+
+    .btn-secondary {
+      background: #e8eaed;
+      color: #5f6368;
+    }
+
+    .btn-secondary:hover {
+      background: #dadce0;
+    }
+
+    .btn-danger {
+      background: #ea4335;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #d33b2c;
+    }
+
+    .btn-success {
+      background: #34a853;
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #2d9348;
+    }
+
+    .btn-small {
+      padding: 8px 16px;
+      font-size: 12px;
+    }
+
+    .group-card {
+      background: #f8f9fa;
+      border: 1px solid #e8eaed;
+      border-radius: 8px;
+      padding: 24px;
+      margin-bottom: 24px;
+      transition: all 0.2s;
+    }
+
+    .group-card:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .group-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .group-name {
+      font-size: 20px;
+      font-weight: 600;
+      color: #1a1a1a;
+    }
+
+    .group-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .group-stats {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .stat {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: white;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .stat-icon {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+    }
+
+    .stat-enabled {
+      background: #34a853;
+    }
+
+    .stat-disabled {
+      background: #ea4335;
+    }
+
+    .stat-total {
+      background: #4285f4;
+    }
+
+    .extensions-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .extension-card {
+      background: white;
+      border: 1px solid #e8eaed;
+      border-radius: 8px;
+      padding: 16px;
+      transition: all 0.2s;
+    }
+
+    .extension-card:hover {
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .extension-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .extension-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+    }
+
+    .extension-name {
+      font-weight: 500;
+      color: #1a1a1a;
+      flex: 1;
+    }
+
+    .extension-toggle {
+      width: 48px;
+      height: 24px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.2s;
+    }
+
+    .extension-toggle.enabled {
+      background: #4285f4;
+    }
+
+    .extension-toggle.disabled {
+      background: #dadce0;
+    }
+
+    .extension-toggle::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 20px;
+      height: 20px;
+      background: white;
+      border-radius: 50%;
+      transition: all 0.2s;
+    }
+
+    .extension-toggle.enabled::after {
+      transform: translateX(24px);
+    }
+
+    .extension-groups {
+      font-size: 12px;
+      color: #5f6368;
+      margin-top: 8px;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid #dadce0;
+      border-radius: 8px;
+      font-size: 16px;
+      margin-bottom: 24px;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: #4285f4;
+      box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+    }
+
+    .always-on-badge {
+      background: #34a853;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      margin-left: 8px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 64px 32px;
+      color: #5f6368;
+    }
+
+    .empty-state h3 {
+      font-size: 20px;
+      margin-bottom: 8px;
+    }
+
+    .empty-state p {
+      font-size: 16px;
+      margin-bottom: 24px;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+    }
+
+    .modal-content {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 32px;
+      border-radius: 12px;
+      width: 600px;
+      max-width: 90vw;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 24px;
+    }
+
+    .modal-input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid #dadce0;
+      border-radius: 8px;
+      font-size: 16px;
+      margin-bottom: 24px;
+    }
+
+    .modal-input:focus {
+      outline: none;
+      border-color: #4285f4;
+      box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 16px;
+      justify-content: flex-end;
+      margin-top: 24px;
+    }
+
+    .checkbox-list {
+      max-height: 400px;
+      overflow-y: auto;
+      border: 1px solid #e8eaed;
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .checkbox-item:last-child {
+      border-bottom: none;
+    }
+
+    .checkbox {
+      width: 20px;
+      height: 20px;
+      accent-color: #4285f4;
+    }
+
+    .checkbox-label {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+    }
+
+    .group-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .group-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #4285f4;
+    }
+
+    .group-dot.always-enabled {
+      background: #34a853;
+    }
+
+    .group-text {
+      font-size: 12px;
+      color: #5f6368;
+    }
+
+    .add-to-group-btn {
+      padding: 6px 12px;
+      font-size: 12px;
+      border-radius: 4px;
+      background: #e8eaed;
+      border: none;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+
+    .add-to-group-btn:hover {
+      background: #dadce0;
+    }
+
+    .tabs {
+      display: flex;
+      border-bottom: 2px solid #e8eaed;
+      margin-bottom: 32px;
+    }
+
+    .tab {
+      padding: 16px 32px;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s;
+      font-weight: 600;
+      font-size: 16px;
+      color: #5f6368;
+    }
+
+    .tab.active {
+      border-bottom-color: #4285f4;
+      color: #4285f4;
+      background: #f8f9fa;
+    }
+
+    .tab:hover:not(.active) {
+      background: #f8f9fa;
+      color: #1a1a1a;
+    }
+
+    .extension-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: crisp-edges;
+      image-rendering: pixelated;
+    }
+
+    .group-dropdown {
+      position: relative;
+      display: inline-block;
+    }
+
+    .group-dropdown-button {
+      padding: 6px 12px;
+      font-size: 12px;
+      border-radius: 4px;
+      background: #4285f4;
+      color: white;
+      border: none;
+      cursor: pointer;
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .group-dropdown-button:hover {
+      background: #3367d6;
+    }
+
+    .group-dropdown-content {
+      display: none;
+      position: absolute;
+      background: white;
+      min-width: 200px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      border-radius: 8px;
+      z-index: 1000;
+      top: 100%;
+      left: 0;
+      margin-top: 4px;
+      border: 1px solid #e8eaed;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .group-dropdown-content.show {
+      display: block;
+    }
+
+    .group-dropdown-item {
+      padding: 12px 16px;
+      cursor: pointer;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+
+    .group-dropdown-item:last-child {
+      border-bottom: none;
+    }
+
+    .group-dropdown-item:hover {
+      background: #f8f9fa;
+    }
+
+    .group-card {
+      background: #f8f9fa;
+      border: 1px solid #e8eaed;
+      border-radius: 8px;
+      padding: 24px;
+      margin-bottom: 24px;
+      transition: all 0.2s;
+      cursor: grab;
+    }
+
+    .group-card:active {
+      cursor: grabbing;
+    }
+
+    .group-card.dragging {
+      opacity: 0.5;
+      transform: rotate(5deg);
+    }
+
+    .group-card.drag-over {
+      border-color: #4285f4;
+      background: #e8f0fe;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .quick-actions {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .notification {
+      position: fixed;
+      top: 24px;
+      right: 24px;
+      padding: 16px 24px;
+      border-radius: 8px;
+      color: white;
+      font-weight: 500;
+      z-index: 1001;
+      opacity: 0;
+      transform: translateY(-20px);
+      transition: all 0.3s;
+    }
+
+    .notification.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .notification.success {
+      background: #34a853;
+    }
+
+    .notification.error {
+      background: #ea4335;
+    }
+
+    @media (max-width: 768px) {
+      .main-content {
+        grid-template-columns: 1fr;
+      }
+      
+      .container {
+        padding: 16px;
+      }
+      
+      .header {
+        padding: 24px;
+      }
+      
+      .groups-section, .sidebar {
+        padding: 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Extension Wrangler</h1>
+      <p>Organize and manage your Chrome extensions with custom groups and bulk controls</p>
+    </div>
+
+    <div class="main-content">
+      <div class="groups-section">
+        <div class="section-title">Extension Management</div>
+        
+        <div class="tabs">
+          <div class="tab active" data-tab="groups">Extension Groups</div>
+          <div class="tab" data-tab="extensions">Extension List</div>
+        </div>
+
+        <div id="groupsContainer">
+          <div class="quick-actions">
+            <button class="btn btn-primary" id="createGroupBtn">
+              <span>+ Create New Group</span>
+            </button>
+            <button class="btn btn-secondary" id="refreshBtn">
+              <span>🔄 Refresh Extensions</span>
+            </button>
+          </div>
+
+          <input type="text" class="search-input" id="searchInput" placeholder="Search groups and extensions...">
+
+          <div id="groupsList">
+            <div class="empty-state" id="emptyState">
+              <h3>No Groups Created Yet</h3>
+              <p>Create your first group to start organizing your extensions</p>
+              <button class="btn btn-primary" onclick="document.getElementById('createGroupBtn').click()">
+                Get Started
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div id="extensionsContainer" class="hidden">
+          <div class="quick-actions">
+            <button class="btn btn-secondary" id="refreshExtensionsBtn">
+              <span>🔄 Refresh Extensions</span>
+            </button>
+          </div>
+
+          <input type="text" class="search-input" id="extensionSearchInput" placeholder="Search extensions...">
+
+          <div id="allExtensionsList"></div>
+        </div>
+      </div>
+
+      <div class="sidebar">
+        <div class="section-subtitle">Extension Summary</div>
+        <div id="extensionSummary">
+          <div class="stat">
+            <div class="stat-icon stat-total"></div>
+            <span id="totalExtensions">0 Total Extensions</span>
+          </div>
+          <div class="stat">
+            <div class="stat-icon stat-enabled"></div>
+            <span id="enabledExtensions">0 Enabled</span>
+          </div>
+          <div class="stat">
+            <div class="stat-icon stat-disabled"></div>
+            <span id="disabledExtensions">0 Disabled</span>
+          </div>
+        </div>
+
+        <div class="section-subtitle" style="margin-top: 32px;">Quick Actions</div>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <button class="btn btn-success btn-small" id="enableAllBtn">Enable All Extensions</button>
+          <button class="btn btn-danger btn-small" id="disableAllBtn">Disable All Extensions</button>
+          <button class="btn btn-secondary btn-small" id="exportBtn">Export Groups</button>
+          <button class="btn btn-secondary btn-small" id="importBtn">Import Groups</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create/Edit Group Modal -->
+  <div class="modal" id="groupModal">
+    <div class="modal-content">
+      <div class="modal-header" id="modalTitle">Create New Group</div>
+      <input type="text" class="modal-input" id="groupNameInput" placeholder="Enter group name">
+      
+      <div class="section-subtitle">Select Extensions</div>
+      <input type="text" class="modal-input" id="modalExtensionSearchInput" placeholder="Search extensions...">
+      <div class="checkbox-list" id="extensionsList"></div>
+      
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="cancelBtn">Cancel</button>
+        <button class="btn btn-primary" id="saveBtn">Save Group</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden file input for import -->
+  <input type="file" id="fileInput" accept=".json" style="display: none;">
+
+  <!-- Notification -->
+  <div class="notification" id="notification"></div>
+
+  <script src="settings.js"></script>
+</body>
+</html>
