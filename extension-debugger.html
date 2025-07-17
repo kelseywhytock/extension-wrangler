@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Extension Wrangler Debugger</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+      margin: 20px;
+      max-width: 1200px;
+      background: #f5f5f5;
+    }
+
+    .header {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    h1 {
+      margin: 0 0 10px 0;
+      color: #333;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      background: #4285f4;
+      color: white;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    button:hover {
+      background: #3367d6;
+    }
+
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+
+    .secondary {
+      background: #e0e0e0;
+      color: #333;
+    }
+
+    .secondary:hover {
+      background: #d0d0d0;
+    }
+
+    .danger {
+      background: #dc3545;
+    }
+
+    .danger:hover {
+      background: #c82333;
+    }
+
+    .section {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    h2 {
+      margin-top: 0;
+      color: #333;
+      border-bottom: 2px solid #f0f0f0;
+      padding-bottom: 10px;
+    }
+
+    .log-container {
+      background: #f8f9fa;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      padding: 15px;
+      max-height: 400px;
+      overflow-y: auto;
+      font-family: 'Monaco', 'Consolas', monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+    }
+
+    .log-entry {
+      margin-bottom: 8px;
+      padding: 4px 8px;
+      border-radius: 3px;
+    }
+
+    .log-error {
+      background: #ffebee;
+      color: #c62828;
+    }
+
+    .log-success {
+      background: #e8f5e9;
+      color: #2e7d32;
+    }
+
+    .log-warning {
+      background: #fff3e0;
+      color: #e65100;
+    }
+
+    .log-info {
+      background: #e3f2fd;
+      color: #1565c0;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .stat-card {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 4px;
+      border: 1px solid #e0e0e0;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #333;
+      margin-top: 5px;
+    }
+
+    .extension-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+
+    .extension-table th,
+    .extension-table td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .extension-table th {
+      background: #f8f9fa;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .extension-table tr:hover {
+      background: #f8f9fa;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 3px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .status-enabled {
+      background: #4caf50;
+      color: white;
+    }
+
+    .status-disabled {
+      background: #9e9e9e;
+      color: white;
+    }
+
+    .status-failed {
+      background: #f44336;
+      color: white;
+    }
+
+    .filter-input {
+      padding: 8px 12px;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      font-size: 14px;
+      width: 300px;
+    }
+
+    .progress-bar {
+      background: #e0e0e0;
+      height: 20px;
+      border-radius: 10px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+
+    .progress-fill {
+      background: #4285f4;
+      height: 100%;
+      transition: width 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 12px;
+    }
+
+    .test-results {
+      margin-top: 20px;
+    }
+
+    .test-item {
+      background: #f8f9fa;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 4px;
+      border-left: 4px solid #e0e0e0;
+    }
+
+    .test-item.success {
+      border-left-color: #4caf50;
+    }
+
+    .test-item.error {
+      border-left-color: #f44336;
+    }
+
+    .test-item.warning {
+      border-left-color: #ff9800;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Extension Wrangler Debugger</h1>
+    <p>Diagnose and troubleshoot extension toggle issues</p>
+  </div>
+
+  <div class="controls">
+    <button id="runDiagnostics">Run Full Diagnostics</button>
+    <button id="testSingleToggle" class="secondary">Test Single Extension Toggle</button>
+    <button id="testBatchToggle" class="secondary">Test Batch Toggle</button>
+    <button id="analyzeGroups" class="secondary">Analyze Problem Groups</button>
+    <button id="clearLogs" class="danger">Clear Logs</button>
+    <input type="text" id="filterInput" class="filter-input" placeholder="Filter extensions by name...">
+  </div>
+
+  <div class="section">
+    <h2>System Status</h2>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Total Extensions</div>
+        <div class="stat-value" id="totalExtensions">-</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Enabled</div>
+        <div class="stat-value" id="enabledExtensions">-</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Disabled</div>
+        <div class="stat-value" id="disabledExtensions">-</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Failed Toggles</div>
+        <div class="stat-value" id="failedToggles">-</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Diagnostic Log</h2>
+    <div class="log-container" id="logContainer"></div>
+    <div class="progress-bar" id="progressBar" style="display: none;">
+      <div class="progress-fill" id="progressFill">0%</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Extension Analysis</h2>
+    <div id="extensionAnalysis">
+      <p>Click "Run Full Diagnostics" to analyze all extensions</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Problem Patterns</h2>
+    <div id="problemPatterns">
+      <p>Analysis results will appear here</p>
+    </div>
+  </div>
+
+  <script>
+    class ExtensionDebugger {
+      constructor() {
+        this.logs = [];
+        this.extensions = {};
+        this.failedExtensions = new Set();
+        this.toggleHistory = {};
+        this.init();
+      }
+
+      async init() {
+        await this.loadExtensions();
+        this.setupEventListeners();
+        this.updateStats();
+      }
+
+      setupEventListeners() {
+        document.getElementById('runDiagnostics').addEventListener('click', () => this.runFullDiagnostics());
+        document.getElementById('testSingleToggle').addEventListener('click', () => this.testSingleToggle());
+        document.getElementById('testBatchToggle').addEventListener('click', () => this.testBatchToggle());
+        document.getElementById('analyzeGroups').addEventListener('click', () => this.analyzeGroups());
+        document.getElementById('clearLogs').addEventListener('click', () => this.clearLogs());
+        document.getElementById('filterInput').addEventListener('input', (e) => this.filterExtensions(e.target.value));
+      }
+
+      async loadExtensions() {
+        try {
+          const extensions = await chrome.management.getAll();
+          this.extensions = {};
+          extensions.forEach(ext => {
+            if (ext.type === 'extension' && ext.id !== chrome.runtime.id) {
+              this.extensions[ext.id] = ext;
+            }
+          });
+          this.log('Loaded ' + Object.keys(this.extensions).length + ' extensions', 'info');
+        } catch (error) {
+          this.log('Failed to load extensions: ' + error.message, 'error');
+        }
+      }
+
+      log(message, type = 'info') {
+        const timestamp = new Date().toLocaleTimeString();
+        const logEntry = { timestamp, message, type };
+        this.logs.push(logEntry);
+        this.renderLog();
+      }
+
+      renderLog() {
+        const container = document.getElementById('logContainer');
+        const shouldScroll = container.scrollHeight - container.scrollTop === container.clientHeight;
+        
+        container.innerHTML = this.logs.map(log => 
+          `<div class="log-entry log-${log.type}">[${log.timestamp}] ${log.message}</div>`
+        ).join('');
+        
+        if (shouldScroll) {
+          container.scrollTop = container.scrollHeight;
+        }
+      }
+
+      updateStats() {
+        const total = Object.keys(this.extensions).length;
+        const enabled = Object.values(this.extensions).filter(ext => ext.enabled).length;
+        const disabled = total - enabled;
+        
+        document.getElementById('totalExtensions').textContent = total;
+        document.getElementById('enabledExtensions').textContent = enabled;
+        document.getElementById('disabledExtensions').textContent = disabled;
+        document.getElementById('failedToggles').textContent = this.failedExtensions.size;
+      }
+
+      async runFullDiagnostics() {
+        this.log('Starting full diagnostics...', 'info');
+        document.getElementById('progressBar').style.display = 'block';
+        
+        const extensions = Object.values(this.extensions);
+        const results = [];
+        
+        for (let i = 0; i < extensions.length; i++) {
+          const ext = extensions[i];
+          const progress = Math.round((i + 1) / extensions.length * 100);
+          this.updateProgress(progress);
+          
+          this.log(`Testing ${ext.name} (${ext.id})...`, 'info');
+          
+          // Test disable
+          const disableResult = await this.testToggle(ext.id, false);
+          
+          // Small delay
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          // Test enable
+          const enableResult = await this.testToggle(ext.id, true);
+          
+          results.push({
+            extension: ext,
+            disableSuccess: disableResult.success,
+            enableSuccess: enableResult.success,
+            disableError: disableResult.error,
+            enableError: enableResult.error,
+            disableTime: disableResult.time,
+            enableTime: enableResult.time
+          });
+          
+          // Restore original state
+          if (ext.enabled !== enableResult.success) {
+            await this.testToggle(ext.id, ext.enabled);
+          }
+        }
+        
+        document.getElementById('progressBar').style.display = 'none';
+        this.analyzeResults(results);
+      }
+
+      async testToggle(extensionId, enable) {
+        const startTime = Date.now();
+        try {
+          await chrome.management.setEnabled(extensionId, enable);
+          const time = Date.now() - startTime;
+          this.log(`Successfully ${enable ? 'enabled' : 'disabled'} in ${time}ms`, 'success');
+          return { success: true, time };
+        } catch (error) {
+          const time = Date.now() - startTime;
+          this.log(`Failed to ${enable ? 'enable' : 'disable'}: ${error.message}`, 'error');
+          this.failedExtensions.add(extensionId);
+          
+          // Track error patterns
+          if (!this.toggleHistory[extensionId]) {
+            this.toggleHistory[extensionId] = [];
+          }
+          this.toggleHistory[extensionId].push({
+            action: enable ? 'enable' : 'disable',
+            error: error.message,
+            time: new Date().toISOString()
+          });
+          
+          return { success: false, error: error.message, time };
+        }
+      }
+
+      analyzeResults(results) {
+        const failedExtensions = results.filter(r => !r.disableSuccess || !r.enableSuccess);
+        
+        // Group by error type
+        const errorPatterns = {};
+        failedExtensions.forEach(result => {
+          const errors = [result.disableError, result.enableError].filter(Boolean);
+          errors.forEach(error => {
+            if (!errorPatterns[error]) {
+              errorPatterns[error] = [];
+            }
+            errorPatterns[error].push(result.extension);
+          });
+        });
+        
+        // Analyze common characteristics
+        const characteristics = this.analyzeCharacteristics(failedExtensions.map(r => r.extension));
+        
+        // Render analysis
+        this.renderAnalysis(results, errorPatterns, characteristics);
+      }
+
+      analyzeCharacteristics(extensions) {
+        const chars = {
+          permissions: {},
+          types: {},
+          installTypes: {},
+          updateUrls: 0,
+          hostPermissions: {}
+        };
+        
+        extensions.forEach(ext => {
+          // Count permissions
+          if (ext.permissions) {
+            ext.permissions.forEach(perm => {
+              chars.permissions[perm] = (chars.permissions[perm] || 0) + 1;
+            });
+          }
+          
+          // Count types
+          chars.types[ext.type] = (chars.types[ext.type] || 0) + 1;
+          
+          // Count install types
+          chars.installTypes[ext.installType] = (chars.installTypes[ext.installType] || 0) + 1;
+          
+          // Check for update URL
+          if (ext.updateUrl) {
+            chars.updateUrls++;
+          }
+          
+          // Count host permissions
+          if (ext.hostPermissions) {
+            ext.hostPermissions.forEach(host => {
+              chars.hostPermissions[host] = (chars.hostPermissions[host] || 0) + 1;
+            });
+          }
+        });
+        
+        return chars;
+      }
+
+      renderAnalysis(results, errorPatterns, characteristics) {
+        const analysisDiv = document.getElementById('extensionAnalysis');
+        const patternsDiv = document.getElementById('problemPatterns');
+        
+        // Render extension table
+        analysisDiv.innerHTML = `
+          <table class="extension-table">
+            <thead>
+              <tr>
+                <th>Extension</th>
+                <th>Status</th>
+                <th>Disable Result</th>
+                <th>Enable Result</th>
+                <th>Avg Time (ms)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${results.map(r => `
+                <tr>
+                  <td>${r.extension.name}</td>
+                  <td><span class="status-badge status-${r.extension.enabled ? 'enabled' : 'disabled'}">${r.extension.enabled ? 'Enabled' : 'Disabled'}</span></td>
+                  <td><span class="status-badge status-${r.disableSuccess ? 'enabled' : 'failed'}">${r.disableSuccess ? 'Success' : 'Failed'}</span></td>
+                  <td><span class="status-badge status-${r.enableSuccess ? 'enabled' : 'failed'}">${r.enableSuccess ? 'Success' : 'Failed'}</span></td>
+                  <td>${Math.round((r.disableTime + r.enableTime) / 2)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+        
+        // Render patterns
+        let patternsHTML = '<div class="test-results">';
+        
+        // Error patterns
+        if (Object.keys(errorPatterns).length > 0) {
+          patternsHTML += '<h3>Error Patterns</h3>';
+          Object.entries(errorPatterns).forEach(([error, exts]) => {
+            patternsHTML += `
+              <div class="test-item error">
+                <strong>Error:</strong> ${error}<br>
+                <strong>Affected Extensions (${exts.length}):</strong> ${exts.map(e => e.name).join(', ')}
+              </div>
+            `;
+          });
+        }
+        
+        // Characteristics of failed extensions
+        const failedCount = results.filter(r => !r.disableSuccess || !r.enableSuccess).length;
+        if (failedCount > 0) {
+          patternsHTML += '<h3>Common Characteristics of Failed Extensions</h3>';
+          patternsHTML += `
+            <div class="test-item warning">
+              <strong>Total Failed:</strong> ${failedCount} out of ${results.length}<br>
+              <strong>Common Permissions:</strong> ${Object.entries(characteristics.permissions)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5)
+                .map(([perm, count]) => `${perm} (${count})`)
+                .join(', ')}<br>
+              <strong>Install Types:</strong> ${Object.entries(characteristics.installTypes)
+                .map(([type, count]) => `${type} (${count})`)
+                .join(', ')}<br>
+              <strong>Have Update URLs:</strong> ${characteristics.updateUrls}
+            </div>
+          `;
+        }
+        
+        // Success rate
+        const successRate = ((results.length - failedCount) / results.length * 100).toFixed(1);
+        patternsHTML += `
+          <div class="test-item ${successRate > 90 ? 'success' : successRate > 70 ? 'warning' : 'error'}">
+            <strong>Overall Success Rate:</strong> ${successRate}%<br>
+            <strong>Average Toggle Time:</strong> ${Math.round(results.reduce((sum, r) => sum + r.disableTime + r.enableTime, 0) / (results.length * 2))}ms
+          </div>
+        `;
+        
+        patternsHTML += '</div>';
+        patternsDiv.innerHTML = patternsHTML;
+        
+        this.updateStats();
+      }
+
+      async testSingleToggle() {
+        const extId = prompt('Enter extension ID to test:');
+        if (!extId || !this.extensions[extId]) {
+          this.log('Invalid extension ID', 'error');
+          return;
+        }
+        
+        const ext = this.extensions[extId];
+        this.log(`Testing single toggle for ${ext.name}...`, 'info');
+        
+        const currentState = ext.enabled;
+        const disableResult = await this.testToggle(extId, !currentState);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        const enableResult = await this.testToggle(extId, currentState);
+        
+        this.log(`Test complete. Disable: ${disableResult.success}, Enable: ${enableResult.success}`, 
+          disableResult.success && enableResult.success ? 'success' : 'error');
+      }
+
+      async testBatchToggle() {
+        const count = parseInt(prompt('How many extensions to test in batch (1-10)?') || '5');
+        if (count < 1 || count > 10) {
+          this.log('Invalid batch size', 'error');
+          return;
+        }
+        
+        const extensions = Object.values(this.extensions).slice(0, count);
+        this.log(`Testing batch toggle with ${extensions.length} extensions...`, 'info');
+        
+        // Store original states
+        const originalStates = {};
+        extensions.forEach(ext => {
+          originalStates[ext.id] = ext.enabled;
+        });
+        
+        // Test disable all
+        this.log('Disabling batch...', 'info');
+        const disablePromises = extensions.map(ext => this.testToggle(ext.id, false));
+        const disableResults = await Promise.all(disablePromises);
+        
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Test enable all
+        this.log('Enabling batch...', 'info');
+        const enablePromises = extensions.map(ext => this.testToggle(ext.id, true));
+        const enableResults = await Promise.all(enablePromises);
+        
+        // Restore original states
+        this.log('Restoring original states...', 'info');
+        const restorePromises = extensions.map(ext => 
+          this.testToggle(ext.id, originalStates[ext.id])
+        );
+        await Promise.all(restorePromises);
+        
+        const successCount = disableResults.filter(r => r.success).length + 
+                           enableResults.filter(r => r.success).length;
+        const totalTests = disableResults.length + enableResults.length;
+        
+        this.log(`Batch test complete. Success rate: ${successCount}/${totalTests}`, 
+          successCount === totalTests ? 'success' : 'warning');
+      }
+
+      async analyzeGroups() {
+        try {
+          const result = await chrome.storage.local.get(['groups']);
+          const groups = result.groups || {};
+          
+          this.log('Analyzing groups...', 'info');
+          
+          for (const [groupId, group] of Object.entries(groups)) {
+            this.log(`\nAnalyzing group: ${group.name} (${group.extensions.length} extensions)`, 'info');
+            
+            let failCount = 0;
+            for (const extId of group.extensions) {
+              const ext = this.extensions[extId];
+              if (!ext) {
+                this.log(`Extension ${extId} not found in group ${group.name}`, 'warning');
+                continue;
+              }
+              
+              if (this.failedExtensions.has(extId)) {
+                failCount++;
+                this.log(`- ${ext.name}: Known to fail`, 'error');
+              }
+            }
+            
+            if (failCount > 0) {
+              this.log(`Group ${group.name} has ${failCount} problematic extensions`, 'warning');
+            } else {
+              this.log(`Group ${group.name} appears healthy`, 'success');
+            }
+          }
+        } catch (error) {
+          this.log('Failed to analyze groups: ' + error.message, 'error');
+        }
+      }
+
+      updateProgress(percent) {
+        const fill = document.getElementById('progressFill');
+        fill.style.width = percent + '%';
+        fill.textContent = percent + '%';
+      }
+
+      clearLogs() {
+        this.logs = [];
+        this.renderLog();
+        this.log('Logs cleared', 'info');
+      }
+
+      filterExtensions(query) {
+        // This would filter the extension table if implemented
+        this.log(`Filtering extensions by: ${query}`, 'info');
+      }
+    }
+
+    // Initialize debugger
+    document.addEventListener('DOMContentLoaded', () => {
+      new ExtensionDebugger();
+    });
+  </script>
+</body>
+</html>

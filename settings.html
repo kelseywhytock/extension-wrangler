@@ -144,26 +144,136 @@
       transition: all 0.2s;
     }
 
+    .group-card[draggable="true"] {
+      cursor: grab;
+    }
+
+    .group-card[draggable="true"]:active {
+      cursor: grabbing;
+    }
+
+    .group-card.dragging {
+      opacity: 0.5;
+      transform: rotate(2deg);
+    }
+
+    .group-card.drag-over {
+      border-color: #4285f4;
+      background: #e8f0fe;
+    }
+
     .group-card:hover {
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
 
     .group-header {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      margin-bottom: 16px;
+      gap: 12px;
+      margin-bottom: 0;
+      cursor: pointer;
+      padding: 8px;
+      margin: -8px;
+      border-radius: 8px;
+      transition: background-color 0.2s;
+    }
+
+    .group-header:hover {
+      background-color: rgba(0, 0, 0, 0.04);
+    }
+
+    .drag-handle {
+      width: 16px;
+      height: 16px;
+      color: #b0b3b8;
+      flex-shrink: 0;
+      margin-right: 4px;
+      cursor: grab;
+    }
+
+    .group-card[draggable="true"]:hover .drag-handle {
+      color: #5f6368;
+    }
+
+    .group-expand-icon {
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+      transition: transform 0.2s;
+      color: #5f6368;
+    }
+
+    .group-expand-icon.expanded {
+      transform: rotate(90deg);
     }
 
     .group-name {
       font-size: 20px;
       font-weight: 600;
       color: #1a1a1a;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .group-content {
+      display: none;
+      margin-top: 16px;
+    }
+
+    .group-content.expanded {
+      display: block;
     }
 
     .group-actions {
       display: flex;
       gap: 8px;
+      align-items: center;
+    }
+
+    .group-toggle {
+      width: 44px;
+      height: 24px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.2s;
+      margin-right: 8px;
+    }
+
+    .group-toggle.enabled {
+      background: #4285f4;
+    }
+
+    .group-toggle.disabled {
+      background: #dadce0;
+    }
+
+    .group-toggle.mixed {
+      background: #fbbc04;
+    }
+
+    .group-toggle::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 20px;
+      height: 20px;
+      background: white;
+      border-radius: 50%;
+      transition: all 0.2s;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .group-toggle.enabled::after {
+      transform: translateX(20px);
+    }
+
+    .group-toggle.mixed::after {
+      transform: translateX(10px);
     }
 
     .group-stats {
@@ -203,16 +313,19 @@
 
     .extensions-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 16px;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 12px;
     }
 
     .extension-card {
       background: white;
       border: 1px solid #e8eaed;
       border-radius: 8px;
-      padding: 16px;
+      padding: 12px 16px;
       transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
 
     .extension-card:hover {
@@ -222,30 +335,32 @@
     .extension-header {
       display: flex;
       align-items: center;
-      gap: 12px;
-      margin-bottom: 8px;
+      gap: 8px;
+      flex: 1;
     }
 
-    .extension-icon {
-      width: 32px;
-      height: 32px;
-      border-radius: 6px;
+    .extension-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
     }
 
     .extension-name {
       font-weight: 500;
       color: #1a1a1a;
-      flex: 1;
+      font-size: 14px;
     }
 
     .extension-toggle {
-      width: 48px;
-      height: 24px;
-      border-radius: 12px;
+      width: 40px;
+      height: 20px;
+      border-radius: 10px;
       border: none;
       cursor: pointer;
       position: relative;
       transition: all 0.2s;
+      flex-shrink: 0;
     }
 
     .extension-toggle.enabled {
@@ -261,21 +376,23 @@
       position: absolute;
       top: 2px;
       left: 2px;
-      width: 20px;
-      height: 20px;
+      width: 16px;
+      height: 16px;
       background: white;
       border-radius: 50%;
       transition: all 0.2s;
     }
 
     .extension-toggle.enabled::after {
-      transform: translateX(24px);
+      transform: translateX(20px);
     }
 
     .extension-groups {
       font-size: 12px;
       color: #5f6368;
-      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
     }
 
     .search-input {
@@ -410,14 +527,15 @@
       display: flex;
       align-items: center;
       gap: 6px;
-      margin-top: 8px;
+      margin-right: 12px;
     }
 
     .group-dot {
-      width: 10px;
-      height: 10px;
+      width: 8px;
+      height: 8px;
       border-radius: 50%;
       background: #4285f4;
+      flex-shrink: 0;
     }
 
     .group-dot.always-enabled {
@@ -427,20 +545,6 @@
     .group-text {
       font-size: 12px;
       color: #5f6368;
-    }
-
-    .add-to-group-btn {
-      padding: 6px 12px;
-      font-size: 12px;
-      border-radius: 4px;
-      background: #e8eaed;
-      border: none;
-      cursor: pointer;
-      margin-top: 8px;
-    }
-
-    .add-to-group-btn:hover {
-      background: #dadce0;
     }
 
     .tabs {
@@ -471,12 +575,11 @@
     }
 
     .extension-icon {
-      width: 32px;
-      height: 32px;
-      border-radius: 6px;
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
       image-rendering: -webkit-optimize-contrast;
       image-rendering: crisp-edges;
-      image-rendering: pixelated;
     }
 
     .group-dropdown {
@@ -485,17 +588,17 @@
     }
 
     .group-dropdown-button {
-      padding: 6px 12px;
-      font-size: 12px;
+      padding: 4px 10px;
+      font-size: 11px;
       border-radius: 4px;
       background: #4285f4;
       color: white;
       border: none;
       cursor: pointer;
-      margin-top: 8px;
       display: flex;
       align-items: center;
       gap: 4px;
+      white-space: nowrap;
     }
 
     .group-dropdown-button:hover {
@@ -536,30 +639,6 @@
 
     .group-dropdown-item:hover {
       background: #f8f9fa;
-    }
-
-    .group-card {
-      background: #f8f9fa;
-      border: 1px solid #e8eaed;
-      border-radius: 8px;
-      padding: 24px;
-      margin-bottom: 24px;
-      transition: all 0.2s;
-      cursor: grab;
-    }
-
-    .group-card:active {
-      cursor: grabbing;
-    }
-
-    .group-card.dragging {
-      opacity: 0.5;
-      transform: rotate(5deg);
-    }
-
-    .group-card.drag-over {
-      border-color: #4285f4;
-      background: #e8f0fe;
     }
 
     .hidden {

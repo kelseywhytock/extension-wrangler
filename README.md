@@ -6,7 +6,8 @@ A Chrome extension for organizing and managing your extensions with custom group
 
 - **Custom Groups**: Create groups to organize extensions by purpose, project, or any criteria
 - **Bulk Controls**: Enable/disable entire groups with one click
-- **Always On Group**: Keep essential extensions always enabled
+- **Fixed Group**: Keep essential extensions always enabled
+- **Accordion Interface**: Groups expand/collapse to save space
 - **Search**: Quickly find extensions across all groups
 - **Settings Page**: Comprehensive management interface with advanced features
 - **Import/Export**: Save and restore your group configurations
@@ -23,6 +24,8 @@ A Chrome extension for organizing and managing your extensions with custom group
 
 ### Popup Interface
 - Click the extension icon for quick access to groups
+- Groups appear as collapsible accordions (collapsed by default)
+- Fixed group appears at the bottom of the list
 - Create new groups directly from the popup
 - Toggle entire groups on/off with the switch button
 - Toggle individual extensions within each group
@@ -52,9 +55,10 @@ A Chrome extension for organizing and managing your extensions with custom group
 ## Tips
 
 - Use groups to create different "profiles" for different tasks
-- The Always On group is perfect for security extensions or password managers
+- The Fixed group is perfect for security extensions or password managers
 - Export your groups to backup your configuration
 - Use the search feature to quickly find and toggle specific extensions
+- Click on group headers to expand/collapse them
 
 ## Permissions
 

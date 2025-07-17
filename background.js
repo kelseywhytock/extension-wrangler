@@ -5,7 +5,7 @@ chrome.runtime.onInstalled.addListener(() => {
   console.log('Extension Organizer installed');
 });
 
-// Listen for extension state changes to keep "Always On" group enabled
+// Listen for extension state changes to keep "Fixed" group enabled
 chrome.management.onEnabled.addListener(async (info) => {
   await handleExtensionStateChange(info.id, true);
 });
@@ -20,18 +20,18 @@ async function handleExtensionStateChange(extensionId, enabled) {
     const result = await chrome.storage.local.get(['groups']);
     const groups = result.groups || {};
     
-    // Check if extension is in "Always On" group
+    // Check if extension is in "Fixed" group
     const alwaysOnGroup = groups['always-on'];
     if (alwaysOnGroup && alwaysOnGroup.extensions.includes(extensionId)) {
-      // If an "Always On" extension was disabled, re-enable it
+      // If a "Fixed" extension was disabled, re-enable it
       if (!enabled) {
         // Small delay to avoid conflicts
         setTimeout(async () => {
           try {
             await chrome.management.setEnabled(extensionId, true);
-            console.log(`Re-enabled "Always On" extension: ${extensionId}`);
+            console.log(`Re-enabled "Fixed" extension: ${extensionId}`);
           } catch (error) {
-            console.error(`Failed to re-enable "Always On" extension ${extensionId}:`, error);
+            console.error(`Failed to re-enable "Fixed" extension ${extensionId}:`, error);
           }
         }, 100);
       }

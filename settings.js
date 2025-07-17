@@ -18,18 +18,25 @@ class ExtensionWranglerSettings {
 
   async loadData() {
     try {
-      const result = await chrome.storage.local.get(['groups']);
+      const result = await chrome.storage.local.get(['groups', 'groupOrder']);
       this.groups = result.groups || {};
+      this.groupOrder = result.groupOrder || [];
       
-      // Ensure "Always On" group exists
+      // Ensure "Fixed" group exists
       if (!this.groups['always-on']) {
         this.groups['always-on'] = {
           id: 'always-on',
-          name: 'Always On',
+          name: 'Fixed',
           extensions: [],
           isDefault: true
         };
         await this.saveData();
+      }
+      
+      // Initialize group order if empty
+      if (this.groupOrder.length === 0) {
+        this.groupOrder = Object.keys(this.groups);
+        await this.saveGroupOrder();
       }
     } catch (error) {
       console.error('Failed to load data:', error);
@@ -59,6 +66,14 @@ class ExtensionWranglerSettings {
     } catch (error) {
       console.error('Failed to save data:', error);
       this.showNotification('Failed to save changes', 'error');
+    }
+  }
+
+  async saveGroupOrder() {
+    try {
+      await chrome.storage.local.set({ groupOrder: this.groupOrder });
+    } catch (error) {
+      console.error('Failed to save group order:', error);
     }
   }
 
@@ -238,8 +253,9 @@ class ExtensionWranglerSettings {
         isDefault: false
       };
       
-      // Add to group order
-      this.groupOrder.push(id);
+      // Add to group order (at the beginning, before Fixed group)
+      this.groupOrder.unshift(id);
+      await this.saveGroupOrder();
       this.showNotification('Group created successfully', 'success');
     }
 
@@ -258,6 +274,7 @@ class ExtensionWranglerSettings {
       delete this.groups[groupId];
       this.groupOrder = this.groupOrder.filter(id => id !== groupId);
       await this.saveData();
+      await this.saveGroupOrder();
       this.render();
       this.showNotification('Group deleted successfully', 'success');
     }
@@ -432,7 +449,7 @@ class ExtensionWranglerSettings {
 
     Object.values(this.extensions).forEach(ext => {
       const groups = this.getExtensionGroups(ext.id);
-      const isAlwaysEnabled = groups.includes('Always On');
+      const isAlwaysEnabled = groups.includes('Fixed');
       
       const div = document.createElement('div');
       div.className = 'extension-card';
@@ -442,7 +459,6 @@ class ExtensionWranglerSettings {
         <div class="extension-header">
           <img src="${ext.icons && ext.icons.length > 0 ? ext.icons.find(icon => icon.size === 16)?.url || ext.icons[0].url : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSI+PHJlY3Qgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSIjZGFkY2UwIi8+PC9zdmc+'}" class="extension-icon" alt="">
           <div class="extension-name">${ext.name}</div>
-          <button class="extension-toggle ${ext.enabled ? 'enabled' : 'disabled'}" data-extension-id="${ext.id}"></button>
         </div>
         ${groups.length > 0 ? `
           <div class="group-indicator">
@@ -453,7 +469,7 @@ class ExtensionWranglerSettings {
           <div class="group-dropdown">
             <button class="group-dropdown-button" data-extension-id="${ext.id}">
               Add to Group
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+              <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor">
                 <path d="M6 9l3-3-3-3v6z"/>
               </svg>
             </button>
@@ -462,6 +478,7 @@ class ExtensionWranglerSettings {
             </div>
           </div>
         `}
+        <button class="extension-toggle ${ext.enabled ? 'enabled' : 'disabled'}" data-extension-id="${ext.id}"></button>
       `;
       
       // Add event listeners
@@ -536,7 +553,7 @@ class ExtensionWranglerSettings {
     extensions.forEach(extensionCard => {
       const extensionName = extensionCard.dataset.extensionName;
       const matches = extensionName.includes(lowerQuery);
-      extensionCard.style.display = matches ? 'block' : 'none';
+      extensionCard.style.display = matches ? 'flex' : 'none';
     });
   }
 
@@ -569,6 +586,39 @@ class ExtensionWranglerSettings {
       
       groupCard.style.display = matches ? 'block' : 'none';
     });
+  }
+
+  toggleAccordion(groupId) {
+    const contentDiv = document.querySelector(`.group-content[data-group-id="${groupId}"]`);
+    const expandIcon = document.querySelector(`.group-header[data-group-id="${groupId}"] .group-expand-icon`);
+    
+    if (!contentDiv || !expandIcon) return;
+    
+    contentDiv.classList.toggle('expanded');
+    expandIcon.classList.toggle('expanded');
+  }
+
+  async reorderGroups(draggedId, targetId) {
+    const draggedIndex = this.groupOrder.indexOf(draggedId);
+    const targetIndex = this.groupOrder.indexOf(targetId);
+    
+    if (draggedIndex === -1 || targetIndex === -1) return;
+    
+    // Remove dragged item
+    this.groupOrder.splice(draggedIndex, 1);
+    
+    // Insert at new position
+    const newTargetIndex = this.groupOrder.indexOf(targetId);
+    if (draggedIndex < targetIndex) {
+      // Dragged from above to below
+      this.groupOrder.splice(newTargetIndex + 1, 0, draggedId);
+    } else {
+      // Dragged from below to above
+      this.groupOrder.splice(newTargetIndex, 0, draggedId);
+    }
+    
+    await this.saveGroupOrder();
+    this.render();
   }
 
   showNotification(message, type = 'success') {
@@ -617,11 +667,24 @@ class ExtensionWranglerSettings {
     emptyState.style.display = 'none';
     container.querySelectorAll('.group-card').forEach(el => el.remove());
     
-    // Sort groups to show "Always On" first
-    const sortedGroups = Object.values(this.groups).sort((a, b) => {
-      if (a.isDefault) return -1;
-      if (b.isDefault) return 1;
-      return a.name.localeCompare(b.name);
+    // Sort groups based on saved order, with Fixed group always last
+    const sortedGroups = [...this.groupOrder]
+      .filter(id => this.groups[id] && !this.groups[id].isDefault)
+      .map(id => this.groups[id]);
+    
+    // Add Fixed group at the end
+    const fixedGroup = Object.values(this.groups).find(g => g.isDefault);
+    if (fixedGroup) {
+      sortedGroups.push(fixedGroup);
+    }
+    
+    // Add any groups not in the order (shouldn't happen, but just in case)
+    Object.values(this.groups).forEach(group => {
+      if (!sortedGroups.find(g => g.id === group.id)) {
+        if (!group.isDefault) {
+          sortedGroups.unshift(group);
+        }
+      }
     });
     
     sortedGroups.forEach(group => {
@@ -633,36 +696,49 @@ class ExtensionWranglerSettings {
       ).length;
       const disabledCount = group.extensions.length - enabledCount;
       
+      // Determine toggle state
+      let toggleState = 'disabled';
+      if (enabledCount === group.extensions.length && group.extensions.length > 0) {
+        toggleState = 'enabled';
+      } else if (enabledCount > 0) {
+        toggleState = 'mixed';
+      }
+      
       groupCard.innerHTML = `
-        <div class="group-header">
+        <div class="group-header" data-group-id="${group.id}">
+          ${!group.isDefault ? '<svg class="drag-handle" viewBox="0 0 16 16" fill="currentColor"><path d="M2 5.5a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0zM6.5 5.5a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0zM2 10.5a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0zM6.5 10.5a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0z"/></svg>' : ''}
+          <svg class="group-expand-icon" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M6 12l4-4-4-4v8z"/>
+          </svg>
           <div class="group-name">
             ${group.name}
-            ${group.isDefault ? '<span class="always-on-badge">ALWAYS ON</span>' : ''}
+            ${group.isDefault ? '<span class="always-on-badge">FIXED</span>' : ''}
           </div>
           <div class="group-actions">
+            <button class="group-toggle ${toggleState}" data-group-id="${group.id}" title="${toggleState === 'enabled' ? 'Disable all' : 'Enable all'}"></button>
             <button class="btn btn-secondary btn-small" data-action="edit" data-group-id="${group.id}">Edit</button>
-            <button class="btn btn-success btn-small" data-action="enable" data-group-id="${group.id}">Enable All</button>
-            <button class="btn btn-danger btn-small" data-action="disable" data-group-id="${group.id}">Disable All</button>
             ${!group.isDefault ? `<button class="btn btn-danger btn-small" data-action="delete" data-group-id="${group.id}">Delete</button>` : ''}
           </div>
         </div>
         
-        <div class="group-stats">
-          <div class="stat">
-            <div class="stat-icon stat-total"></div>
-            <span>${group.extensions.length} Total</span>
+        <div class="group-content" data-group-id="${group.id}">
+          <div class="group-stats">
+            <div class="stat">
+              <div class="stat-icon stat-total"></div>
+              <span>${group.extensions.length} Total</span>
+            </div>
+            <div class="stat">
+              <div class="stat-icon stat-enabled"></div>
+              <span>${enabledCount} Enabled</span>
+            </div>
+            <div class="stat">
+              <div class="stat-icon stat-disabled"></div>
+              <span>${disabledCount} Disabled</span>
+            </div>
           </div>
-          <div class="stat">
-            <div class="stat-icon stat-enabled"></div>
-            <span>${enabledCount} Enabled</span>
-          </div>
-          <div class="stat">
-            <div class="stat-icon stat-disabled"></div>
-            <span>${disabledCount} Disabled</span>
-          </div>
+          
+          <div class="extensions-grid" id="extensions-${group.id}"></div>
         </div>
-        
-        <div class="extensions-grid" id="extensions-${group.id}"></div>
       `;
       
       const extensionsGrid = groupCard.querySelector(`#extensions-${group.id}`);
@@ -682,11 +758,13 @@ class ExtensionWranglerSettings {
           
           extCard.innerHTML = `
             <div class="extension-header">
-              <img src="${ext.icons && ext.icons.length > 0 ? ext.icons[0].url : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBmaWxsPSIjZGFkY2UwIi8+PC9zdmc+'}" class="extension-icon" alt="">
-              <div class="extension-name">${ext.name}</div>
-              <button class="extension-toggle ${ext.enabled ? 'enabled' : 'disabled'}" data-extension-id="${ext.id}"></button>
+              <img src="${ext.icons && ext.icons.length > 0 ? ext.icons.find(icon => icon.size === 16)?.url || ext.icons[0].url : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSI+PHJlY3Qgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSIjZGFkY2UwIi8+PC9zdmc+'}" class="extension-icon" alt="">
+              <div class="extension-info">
+                <div class="extension-name">${ext.name}</div>
+                ${otherGroups.length > 0 ? `<div class="extension-groups">Also in: ${otherGroups.join(', ')}</div>` : ''}
+              </div>
             </div>
-            ${otherGroups.length > 0 ? `<div class="extension-groups">Also in: ${otherGroups.join(', ')}</div>` : ''}
+            <button class="extension-toggle ${ext.enabled ? 'enabled' : 'disabled'}" data-extension-id="${ext.id}"></button>
           `;
           
           extCard.querySelector('.extension-toggle').addEventListener('click', () => {
@@ -697,9 +775,28 @@ class ExtensionWranglerSettings {
         });
       }
       
+      // Add event listeners
+      const header = groupCard.querySelector('.group-header');
+      header.addEventListener('click', (e) => {
+        // Don't toggle accordion if clicking action buttons or toggle
+        if (e.target.closest('.group-actions') || e.target.closest('.group-toggle')) return;
+        this.toggleAccordion(group.id);
+      });
+      
+      // Add event listener for group toggle
+      const toggleBtn = groupCard.querySelector('.group-toggle');
+      if (toggleBtn) {
+        toggleBtn.addEventListener('click', (e) => {
+          e.stopPropagation(); // Prevent accordion toggle
+          const shouldEnable = toggleState !== 'enabled';
+          this.toggleGroup(group.id, shouldEnable);
+        });
+      }
+      
       // Add event listeners for group actions
       groupCard.querySelectorAll('[data-action]').forEach(btn => {
         btn.addEventListener('click', (e) => {
+          e.stopPropagation(); // Prevent accordion toggle
           const action = e.target.dataset.action;
           const groupId = e.target.dataset.groupId;
           
@@ -707,18 +804,48 @@ class ExtensionWranglerSettings {
             case 'edit':
               this.showGroupModal(groupId);
               break;
-            case 'enable':
-              this.toggleGroup(groupId, true);
-              break;
-            case 'disable':
-              this.toggleGroup(groupId, false);
-              break;
             case 'delete':
               this.deleteGroup(groupId);
               break;
           }
         });
       });
+      
+      // Add drag and drop functionality (only for non-fixed groups)
+      if (!group.isDefault) {
+        groupCard.draggable = true;
+        
+        groupCard.addEventListener('dragstart', (e) => {
+          this.draggedGroupId = group.id;
+          e.dataTransfer.effectAllowed = 'move';
+          groupCard.classList.add('dragging');
+        });
+        
+        groupCard.addEventListener('dragend', (e) => {
+          groupCard.classList.remove('dragging');
+          this.draggedGroupId = null;
+        });
+        
+        groupCard.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          if (this.draggedGroupId && this.draggedGroupId !== group.id) {
+            groupCard.classList.add('drag-over');
+          }
+        });
+        
+        groupCard.addEventListener('dragleave', (e) => {
+          groupCard.classList.remove('drag-over');
+        });
+        
+        groupCard.addEventListener('drop', (e) => {
+          e.preventDefault();
+          groupCard.classList.remove('drag-over');
+          
+          if (this.draggedGroupId && this.draggedGroupId !== group.id) {
+            this.reorderGroups(this.draggedGroupId, group.id);
+          }
+        });
+      }
       
       container.appendChild(groupCard);
     });

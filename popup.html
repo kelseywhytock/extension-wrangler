@@ -113,9 +113,30 @@
 
     .group-header {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      margin-bottom: 8px;
+      gap: 8px;
+      margin-bottom: 0;
+      cursor: pointer;
+      padding: 8px;
+      margin: -8px;
+      border-radius: 8px;
+      transition: background-color 0.2s;
+    }
+
+    .group-header:hover {
+      background-color: rgba(0, 0, 0, 0.04);
+    }
+
+    .group-expand-icon {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      transition: transform 0.2s;
+      color: #5f6368;
+    }
+
+    .group-expand-icon.expanded {
+      transform: rotate(90deg);
     }
 
     .group-info {
@@ -182,9 +203,16 @@
     }
 
     .group-extensions {
-      display: flex;
+      display: none;
       flex-direction: column;
       gap: 8px;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #e8eaed;
+    }
+
+    .group-extensions.expanded {
+      display: flex;
     }
 
     .extension-item {
@@ -355,12 +383,184 @@
     .extension-search {
       margin-bottom: 16px;
     }
+
+    /* Loading states */
+    .group.loading {
+      opacity: 0.7;
+      pointer-events: none;
+    }
+
+    .group-toggle.loading {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .group-toggle.loading::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+      animation: shimmer 1s infinite;
+    }
+
+    @keyframes shimmer {
+      to {
+        left: 100%;
+      }
+    }
+
+    .group-toggle:disabled {
+      cursor: not-allowed;
+      opacity: 0.7;
+    }
+
+    /* Notifications */
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 12px 20px;
+      border-radius: 4px;
+      color: white;
+      font-size: 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      z-index: 2000;
+      animation: slideIn 0.3s ease-out;
+    }
+
+    .notification-success {
+      background: #34a853;
+    }
+
+    .notification-error {
+      background: #ea4335;
+    }
+
+    .notification-info {
+      background: #4285f4;
+    }
+
+    .notification.fade-out {
+      animation: fadeOut 0.3s ease-out forwards;
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes fadeOut {
+      to {
+        opacity: 0;
+        transform: scale(0.9);
+      }
+    }
+
+    /* Skeleton loaders */
+    .skeleton-container {
+      padding: 20px 0;
+    }
+
+    .skeleton-group {
+      background: white;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .skeleton-header {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .skeleton-text {
+      height: 16px;
+      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+      background-size: 200% 100%;
+      animation: loading 1.5s infinite;
+      border-radius: 4px;
+    }
+
+    .skeleton-title {
+      width: 60%;
+    }
+
+    .skeleton-stats {
+      width: 40%;
+      height: 12px;
+    }
+
+    @keyframes loading {
+      0% {
+        background-position: 200% 0;
+      }
+      100% {
+        background-position: -200% 0;
+      }
+    }
+
+    /* Accessibility improvements */
+    .group-header:focus {
+      outline: 2px solid #4285f4;
+      outline-offset: 2px;
+    }
+
+    .tab:focus {
+      outline: 2px solid #4285f4;
+      outline-offset: -2px;
+    }
+
+    button:focus-visible {
+      outline: 2px solid #4285f4;
+      outline-offset: 2px;
+    }
+
+    .extension-toggle:focus-visible {
+      box-shadow: 0 0 0 2px #4285f4;
+    }
+
+    .group-toggle:focus-visible {
+      box-shadow: 0 0 0 2px #4285f4;
+    }
+
+    /* High contrast mode support */
+    @media (prefers-contrast: high) {
+      .group {
+        border: 1px solid currentColor;
+      }
+      
+      .extension-toggle,
+      .group-toggle {
+        border: 1px solid currentColor;
+      }
+    }
+
+    /* Reduced motion support */
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
   </style>
 </head>
 <body>
   <div class="header">
     <div class="title">Extension Wrangler</div>
     <div style="display: flex; gap: 8px;">
+      <button class="btn btn-secondary" id="debugBtn" title="Show debug info">🐛</button>
       <button class="btn btn-secondary" id="openSettingsBtn">Settings</button>
       <button class="btn btn-primary" id="createGroupBtn">New Group</button>
     </div>
@@ -370,28 +570,28 @@
     <input type="text" class="search-input" id="searchInput" placeholder="Search extensions...">
   </div>
 
-  <div class="tabs">
-    <div class="tab active" data-tab="groups">Groups</div>
-    <div class="tab" data-tab="search">Search</div>
+  <div class="tabs" role="tablist">
+    <div class="tab active" data-tab="groups" role="tab" aria-selected="true" tabindex="0">Groups</div>
+    <div class="tab" data-tab="search" role="tab" aria-selected="false" tabindex="0">Search</div>
   </div>
 
   <div class="content">
-    <div id="groupsContent">
-      <div class="empty-state" id="emptyState">
+    <div id="groupsContent" role="tabpanel" aria-label="Extension groups">
+      <div class="empty-state" id="emptyState" role="status">
         No groups created yet. Click "New Group" to get started.
       </div>
     </div>
 
-    <div id="searchContent" class="hidden">
-      <div id="searchResults"></div>
+    <div id="searchContent" class="hidden" role="tabpanel" aria-label="Search extensions">
+      <div id="searchResults" role="list"></div>
     </div>
   </div>
 
   <!-- Create Group Modal -->
-  <div class="modal" id="createGroupModal">
+  <div class="modal" id="createGroupModal" role="dialog" aria-labelledby="modalTitle" aria-modal="true" aria-hidden="true">
     <div class="modal-content">
-      <div class="modal-header">Create New Group</div>
-      <input type="text" class="modal-input" id="groupNameInput" placeholder="Group name">
+      <div class="modal-header" id="modalTitle">Create New Group</div>
+      <input type="text" class="modal-input" id="groupNameInput" placeholder="Group name" aria-label="Group name" maxlength="50">
       <div class="modal-actions">
         <button class="btn btn-secondary" id="cancelCreateBtn">Cancel</button>
         <button class="btn btn-primary" id="confirmCreateBtn">Create</button>
