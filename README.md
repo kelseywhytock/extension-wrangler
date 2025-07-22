@@ -1,4 +1,5 @@
 # Extension Wrangler
+https://chromewebstore.google.com/detail/extension-wrangler/apjdbfodkmneiajceccgcoomajolimeh?authuser=0&hl=en
 
 A Chrome extension for organizing and managing your extensions with custom groups and bulk controls.
 
