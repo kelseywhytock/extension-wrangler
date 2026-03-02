@@ -678,6 +678,15 @@
       background: #ea4335;
     }
 
+    .notification.warning {
+      background: #fbbc04;
+      color: #1a1a1a;
+    }
+
+    .notification.info {
+      background: #4285f4;
+    }
+
     @media (max-width: 768px) {
       .main-content {
         grid-template-columns: 1fr;
@@ -729,7 +738,7 @@
             <div class="empty-state" id="emptyState">
               <h3>No Groups Created Yet</h3>
               <p>Create your first group to start organizing your extensions</p>
-              <button class="btn btn-primary" onclick="document.getElementById('createGroupBtn').click()">
+              <button class="btn btn-primary" id="getStartedBtn">
                 Get Started
               </button>
             </div>
@@ -750,6 +759,12 @@
       </div>
 
       <div class="sidebar">
+        <div class="section-subtitle">✨ Chrome Profile Sync</div>
+        <div style="background: #e8f0fe; border: 1px solid #4285f4; border-radius: 8px; padding: 16px; margin-bottom: 24px; font-size: 14px;">
+          <div style="font-weight: 600; color: #1558d6; margin-bottom: 8px;">Your groups now sync across devices!</div>
+          <div style="color: #5f6368;">Settings are automatically synchronized with your Chrome profile and available on all your devices.</div>
+        </div>
+        
         <div class="section-subtitle">Extension Summary</div>
         <div id="extensionSummary">
           <div class="stat">
@@ -766,12 +781,24 @@
           </div>
         </div>
 
-        <div class="section-subtitle" style="margin-top: 32px;">Quick Actions</div>
+        <div class="section-subtitle" style="margin-top: 32px;">💡 Tips</div>
+        <div style="background: #f8f9fa; border: 1px solid #e8eaed; border-radius: 8px; padding: 16px; margin-bottom: 24px; font-size: 14px;">
+          <div style="font-weight: 600; color: #1a1a1a; margin-bottom: 8px;">Drag & Drop Reordering</div>
+          <div style="color: #5f6368;">Drag groups by their handle to reorder them. The Fixed group always stays at the bottom.</div>
+        </div>
+        
+        <div class="section-subtitle">Quick Actions</div>
         <div style="display: flex; flex-direction: column; gap: 12px;">
           <button class="btn btn-success btn-small" id="enableAllBtn">Enable All Extensions</button>
           <button class="btn btn-danger btn-small" id="disableAllBtn">Disable All Extensions</button>
           <button class="btn btn-secondary btn-small" id="exportBtn">Export Groups</button>
           <button class="btn btn-secondary btn-small" id="importBtn">Import Groups</button>
+        </div>
+        
+        <div class="section-subtitle" style="margin-top: 32px;">🗑️ Recently Removed</div>
+        <div id="removedExtensionsSection" style="font-size: 14px;">
+          <div id="removedExtensionsList" style="max-height: 200px; overflow-y: auto;"></div>
+          <button class="btn btn-secondary btn-small" id="clearHistoryBtn" style="margin-top: 12px; width: 100%;">Clear History</button>
         </div>
       </div>
     </div>
@@ -800,6 +827,7 @@
   <!-- Notification -->
   <div class="notification" id="notification"></div>
 
-  <script src="settings.js"></script>
+  <script src="webstore-utils.js"></script>
+<script src="settings.js"></script>
 </body>
 </html>

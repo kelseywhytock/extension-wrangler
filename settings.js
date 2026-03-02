@@ -10,15 +10,85 @@ class ExtensionWranglerSettings {
   }
 
   async init() {
-    await this.loadData();
-    await this.loadExtensions();
-    this.setupEventListeners();
-    this.render();
+    console.log('🚀 Initializing Extension Wrangler Settings...');
+    
+    try {
+      await this.loadData();
+      await this.loadExtensions();
+      this.setupEventListeners();
+      this.render();
+      console.log('✅ Settings initialization complete');
+    } catch (error) {
+      console.error('❌ Settings initialization failed:', error);
+      // Still try to set up basic event listeners
+      try {
+        this.setupEventListeners();
+      } catch (setupError) {
+        console.error('❌ Event listener setup failed:', setupError);
+      }
+    }
+  }
+
+  async migrateFromLocalStorage() {
+    try {
+      // Check if migration has already been completed
+      const migrationResult = await chrome.storage.sync.get(['migrationCompleted']);
+      if (migrationResult.migrationCompleted) {
+        return; // Migration already completed, skip
+      }
+
+      // Check if sync storage is empty and local storage has data
+      const syncResult = await chrome.storage.sync.get(['groups', 'groupOrder']);
+      const localResult = await chrome.storage.local.get(['groups', 'groupOrder']);
+
+      const hasSyncData = syncResult.groups && Object.keys(syncResult.groups).length > 0;
+      const hasLocalData = localResult.groups && Object.keys(localResult.groups).length > 0;
+
+      if (!hasSyncData && hasLocalData) {
+        console.log('[Web Store Debug] 🔄 Migrating extension groups from local storage to sync storage...');
+
+        try {
+          // Copy data to sync storage
+          await chrome.storage.sync.set({
+            groups: localResult.groups,
+            groupOrder: localResult.groupOrder || []
+          });
+
+          // Mark migration as completed
+          await chrome.storage.sync.set({ migrationCompleted: true });
+
+          // Clear local storage to avoid confusion
+          await chrome.storage.local.remove(['groups', 'groupOrder']);
+
+          this.showNotification('Settings migrated to Chrome sync', 'success');
+          console.log('[Web Store Debug] Migration completed successfully');
+        } catch (migrationError) {
+          console.error('[Web Store Debug] Migration failed:', migrationError);
+
+          // If migration fails due to quota, keep using local storage
+          if (migrationError.message && migrationError.message.includes('QUOTA')) {
+            console.log('[Web Store Debug] Migration failed due to quota - keeping local storage');
+            this.showNotification('Using local storage due to sync quota limits', 'info');
+            return;
+          }
+          throw migrationError;
+        }
+      } else {
+        // Mark migration as completed even if no data to migrate
+        await chrome.storage.sync.set({ migrationCompleted: true });
+      }
+    } catch (error) {
+      console.error('[Web Store Debug] Failed to migrate from local storage:', error);
+      // Don't throw - allow the extension to continue with current data
+    }
   }
 
   async loadData() {
     try {
-      const result = await chrome.storage.local.get(['groups', 'groupOrder']);
+      // First, try to migrate from local storage to sync storage
+      await this.migrateFromLocalStorage();
+      
+      const result = await chrome.storage.sync.get(['groups', 'groupOrder']);
       this.groups = result.groups || {};
       this.groupOrder = result.groupOrder || [];
       
@@ -38,6 +108,9 @@ class ExtensionWranglerSettings {
         this.groupOrder = Object.keys(this.groups);
         await this.saveGroupOrder();
       }
+      
+      // Clean up orphaned extensions after loading all data
+      await this.cleanupOrphanedExtensions();
     } catch (error) {
       console.error('Failed to load data:', error);
       this.showNotification('Failed to load groups', 'error');
@@ -46,34 +119,256 @@ class ExtensionWranglerSettings {
 
   async loadExtensions() {
     try {
-      const extensions = await chrome.management.getAll();
-      this.extensions = {};
-      
-      extensions.forEach(ext => {
-        if (ext.type === 'extension' && ext.id !== chrome.runtime.id) {
-          this.extensions[ext.id] = ext;
+      console.log('🔄 Attempting to load extensions...');
+      let extensions = await chrome.management.getAll();
+
+      // Chrome Web Store fix: Retry if no extensions loaded or API returned empty/invalid result
+      if (!extensions || extensions.length === 0 || !Array.isArray(extensions)) {
+        console.warn('⚠️ Initial extension load failed or returned empty - retrying for Chrome Web Store compatibility...');
+
+        // Wait a bit for Chrome Web Store to fully initialize
+        await new Promise(resolve => setTimeout(resolve, 1500));
+
+        try {
+          extensions = await chrome.management.getAll();
+          console.log('🔄 Retry attempt completed, got:', extensions ? extensions.length : 'null', 'extensions');
+        } catch (retryError) {
+          console.error('❌ Retry attempt also failed:', retryError);
+          throw retryError;
         }
+      }
+
+      // Reset extensions object
+      this.extensions = {};
+
+      // Process extensions with additional validation
+      if (extensions && Array.isArray(extensions)) {
+        extensions.forEach(ext => {
+          if (ext && ext.type === 'extension' && ext.id && ext.id !== chrome.runtime.id) {
+            this.extensions[ext.id] = ext;
+          }
+        });
+      }
+
+      const loadedCount = Object.keys(this.extensions).length;
+      console.log(`✅ Loaded ${loadedCount} extensions`);
+
+      // Enhanced debugging for Chrome Web Store issues
+      console.log(`[Web Store Debug] Extension loading details:`, {
+        rawExtensionsCount: extensions ? extensions.length : 'null',
+        filteredExtensionsCount: loadedCount,
+        extensionIds: Object.keys(this.extensions),
+        timestamp: new Date().toISOString()
       });
+
+      // Cache extension names for future reference
+      await this.cacheExtensionNames();
+
+      // Verify we loaded extensions with more detailed warning
+      if (loadedCount === 0) {
+        console.warn('⚠️ WARNING: No extensions were loaded!');
+        console.warn('This could indicate:');
+        console.warn('- Chrome Web Store security restrictions');
+        console.warn('- Extension permissions not granted');
+        console.warn('- API timing issues');
+        console.warn('- Genuinely no other extensions installed');
+
+        this.showNotification('No extensions found - this may affect functionality', 'warning');
+      }
     } catch (error) {
-      console.error('Failed to load extensions:', error);
-      this.showNotification('Failed to load extensions', 'error');
+      console.error('❌ Failed to load extensions:', error);
+
+      // Enhanced error logging for Chrome Web Store debugging
+      console.error(`[Web Store Debug] Extension loading failed:`, {
+        error: error.message,
+        errorCode: error.code || 'unknown',
+        stack: error.stack,
+        timestamp: new Date().toISOString(),
+        userAgent: navigator.userAgent
+      });
+
+      this.showNotification('Failed to load extensions - check permissions', 'error');
+      // Set a flag to prevent cleanup
+      this.extensionLoadError = true;
     }
+  }
+
+  async cleanupOrphanedExtensions() {
+    // Don't run cleanup if there was an error loading extensions
+    if (this.extensionLoadError) {
+      console.warn('⚠️ Skipping cleanup due to extension load error');
+      return;
+    }
+    
+    let hasChanges = false;
+    const validExtensionIds = new Set(Object.keys(this.extensions));
+    const removedExtensions = [];
+    
+    // Safety check - if no extensions loaded, don't clean up
+    if (validExtensionIds.size === 0) {
+      console.warn('⚠️ No extensions loaded - skipping cleanup to prevent data loss');
+      return;
+    }
+    
+    console.log(`🧹 Checking for orphaned extensions (${validExtensionIds.size} valid extensions found)...`);
+    
+    // Check each group for orphaned extensions
+    for (const [, group] of Object.entries(this.groups)) {
+      const originalLength = group.extensions.length;
+      const beforeExtensions = [...group.extensions];
+      
+      // Filter out extensions that no longer exist and track what we're removing
+      const extensionsToKeep = [];
+      for (const extId of group.extensions) {
+        const exists = validExtensionIds.has(extId);
+        if (exists) {
+          extensionsToKeep.push(extId);
+        } else {
+          // Try to get the extension name from our cached data or use the ID
+          const extensionName = await this.getCachedExtensionName(extId);
+          removedExtensions.push({
+            id: extId,
+            name: extensionName,
+            groupName: group.name
+          });
+          console.warn(`Removing orphaned extension ${extensionName} (${extId}) from group "${group.name}"`);
+        }
+      }
+      group.extensions = extensionsToKeep;
+      
+      if (group.extensions.length !== originalLength) {
+        hasChanges = true;
+        const removed = beforeExtensions.filter(id => !group.extensions.includes(id));
+        console.log(`Cleaned ${removed.length} orphaned extension(s) from group "${group.name}"`);
+      }
+    }
+    
+    // Save changes and notify user if any orphaned extensions were removed
+    if (hasChanges) {
+      await this.saveData();
+      await this.trackRemovedExtensions(removedExtensions);
+      console.log('✅ Orphaned extensions cleanup complete');
+      
+      // Show user-friendly notification
+      if (removedExtensions.length > 0) {
+        this.showRemovedExtensionsNotification(removedExtensions);
+      }
+    } else {
+      console.log('✅ No orphaned extensions found');
+    }
+  }
+
+  async getCachedExtensionName(extensionId) {
+    // Try to get the name from our cached extension names
+    const cache = await this.getCachedRemovedExtensions();
+    const cached = cache[extensionId];
+    return cached ? cached.name : extensionId.slice(0, 8) + '...';
+  }
+
+  async cacheExtensionNames() {
+    try {
+      // Get existing cached names
+      const result = await chrome.storage.sync.get(['extensionNameCache']);
+      const existingCache = result.extensionNameCache || {};
+      
+      // Add current extension names to cache
+      const updatedCache = { ...existingCache };
+      Object.values(this.extensions).forEach(ext => {
+        updatedCache[ext.id] = {
+          name: ext.name,
+          lastSeen: new Date().toISOString()
+        };
+      });
+      
+      // Keep only the last 200 entries to avoid storage bloat
+      const entries = Object.entries(updatedCache)
+        .sort((a, b) => new Date(b[1].lastSeen) - new Date(a[1].lastSeen))
+        .slice(0, 200);
+      
+      const trimmedCache = Object.fromEntries(entries);
+      
+      // Save updated cache
+      await chrome.storage.sync.set({ extensionNameCache: trimmedCache });
+    } catch (error) {
+      console.error('Failed to cache extension names:', error);
+    }
+  }
+
+  async getCachedRemovedExtensions() {
+    try {
+      const result = await chrome.storage.sync.get(['extensionNameCache']);
+      return result.extensionNameCache || {};
+    } catch (error) {
+      console.error('Failed to get cached extension names:', error);
+      return {};
+    }
+  }
+
+  async trackRemovedExtensions(removedExtensions) {
+    if (removedExtensions.length === 0) return;
+    
+    try {
+      // Get existing removal history
+      const result = await chrome.storage.sync.get(['removedExtensions']);
+      const existingRemovals = result.removedExtensions || [];
+      
+      // Add new removals with timestamp
+      const newRemovals = removedExtensions.map(ext => ({
+        ...ext,
+        removedAt: new Date().toISOString(),
+        cleanedUp: true
+      }));
+      
+      // Keep only last 50 removals to avoid storage bloat
+      const allRemovals = [...newRemovals, ...existingRemovals].slice(0, 50);
+      
+      // Save to storage
+      await chrome.storage.sync.set({ removedExtensions: allRemovals });
+      
+      console.log('📝 Tracked removed extensions:', newRemovals);
+    } catch (error) {
+      console.error('Failed to track removed extensions:', error);
+    }
+  }
+
+  showRemovedExtensionsNotification(removedExtensions) {
+    const count = removedExtensions.length;
+    const extensionNames = removedExtensions.slice(0, 3).map(ext => ext.name).join(', ');
+    const moreText = count > 3 ? ` and ${count - 3} more` : '';
+    
+    let message;
+    if (count === 1) {
+      message = `Removed "${extensionNames}" from groups (extension was uninstalled)`;
+    } else {
+      message = `Cleaned up ${count} uninstalled extensions: ${extensionNames}${moreText}`;
+    }
+    
+    this.showNotification(message, 'success');
+    
+    // Also log detailed information
+    console.group('🗑️ Extensions Removed from Groups');
+    removedExtensions.forEach(ext => {
+      console.log(`• "${ext.name}" removed from "${ext.groupName}"`);
+    });
+    console.groupEnd();
   }
 
   async saveData() {
     try {
-      await chrome.storage.local.set({ groups: this.groups });
+      await chrome.storage.sync.set({ groups: this.groups });
     } catch (error) {
       console.error('Failed to save data:', error);
       this.showNotification('Failed to save changes', 'error');
+      throw error;
     }
   }
 
   async saveGroupOrder() {
     try {
-      await chrome.storage.local.set({ groupOrder: this.groupOrder });
+      await chrome.storage.sync.set({ groupOrder: this.groupOrder });
     } catch (error) {
       console.error('Failed to save group order:', error);
+      throw error;
     }
   }
 
@@ -145,6 +440,15 @@ class ExtensionWranglerSettings {
 
     document.getElementById('fileInput').addEventListener('change', (e) => {
       this.importGroups(e.target.files[0]);
+    });
+
+    document.getElementById('clearHistoryBtn').addEventListener('click', () => {
+      this.clearRemovedExtensionsHistory();
+    });
+
+    // Get Started button in empty state
+    document.getElementById('getStartedBtn').addEventListener('click', () => {
+      this.showGroupModal();
     });
 
     // Close modal on backdrop click
@@ -598,26 +902,118 @@ class ExtensionWranglerSettings {
     expandIcon.classList.toggle('expanded');
   }
 
-  async reorderGroups(draggedId, targetId) {
-    const draggedIndex = this.groupOrder.indexOf(draggedId);
-    const targetIndex = this.groupOrder.indexOf(targetId);
-    
-    if (draggedIndex === -1 || targetIndex === -1) return;
-    
-    // Remove dragged item
-    this.groupOrder.splice(draggedIndex, 1);
-    
-    // Insert at new position
-    const newTargetIndex = this.groupOrder.indexOf(targetId);
-    if (draggedIndex < targetIndex) {
-      // Dragged from above to below
-      this.groupOrder.splice(newTargetIndex + 1, 0, draggedId);
-    } else {
-      // Dragged from below to above
-      this.groupOrder.splice(newTargetIndex, 0, draggedId);
+  async moveGroup(groupId, direction) {
+    const index = this.groupOrder.indexOf(groupId);
+    if (index === -1) return;
+
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+
+    // Prevent moving the first item up or the last item down
+    if (newIndex < 0 || newIndex >= this.groupOrder.length) {
+      return;
     }
     
+    // Prevent moving into the 'Fixed' group spot if it's at the end
+    const targetId = this.groupOrder[newIndex];
+    if (this.groups[targetId] && this.groups[targetId].isDefault) {
+        console.log("Cannot move group past the 'Fixed' group.");
+        return;
+    }
+
+
+    // Swap elements
+    const newOrder = [...this.groupOrder];
+    const temp = newOrder[index];
+    newOrder[index] = newOrder[newIndex];
+    newOrder[newIndex] = temp;
+
+    this.groupOrder = newOrder;
     await this.saveGroupOrder();
+    this.render();
+    this.showNotification('Group order updated', 'success');
+  }
+
+  async reorderGroups(draggedId, targetId) {
+    // Enhanced debugging for drag and drop issues
+    console.log(`[Drag Debug] Attempting reorder:`, {
+      draggedId,
+      targetId,
+      draggedGroupExists: !!this.groups[draggedId],
+      targetGroupExists: !!this.groups[targetId],
+      draggedIsDefault: this.groups[draggedId]?.isDefault,
+      currentGroupOrder: this.groupOrder,
+      timestamp: new Date().toISOString()
+    });
+
+    // Don't allow dragging the Fixed group
+    if (this.groups[draggedId]?.isDefault) {
+      console.log('Cannot drag the Fixed group');
+      return;
+    }
+
+    // Validate inputs more thoroughly
+    if (!draggedId || !targetId) {
+      console.error('[Drag Debug] Missing draggedId or targetId:', { draggedId, targetId });
+      return;
+    }
+
+    if (!this.groups[draggedId]) {
+      console.error('[Drag Debug] Dragged group not found:', draggedId);
+      return;
+    }
+
+    if (!this.groups[targetId]) {
+      console.error('[Drag Debug] Target group not found:', targetId);
+      return;
+    }
+
+    const draggedIndex = this.groupOrder.indexOf(draggedId);
+
+    if (draggedIndex === -1) {
+      console.error('[Drag Debug] Dragged group not found in group order:', {
+        draggedId,
+        groupOrder: this.groupOrder,
+        availableGroups: Object.keys(this.groups)
+      });
+      return;
+    }
+
+    if (draggedId === targetId) {
+      console.log('[Drag Debug] Cannot drop group on itself');
+      return;
+    }
+
+    console.log(`[Drag Debug] Valid reorder operation: moving ${this.groups[draggedId]?.name} (${draggedId})`);
+    console.log('[Drag Debug] Current order before:', this.groupOrder);
+    
+    // Create a new array to avoid mutation issues
+    let newOrder = [...this.groupOrder];
+    
+    // Remove dragged item from current position
+    newOrder.splice(draggedIndex, 1);
+    
+    // Determine where to insert the dragged item
+    let insertIndex;
+    
+    if (this.groups[targetId]?.isDefault) {
+      // If dropping on Fixed group, insert at the end (before Fixed group)
+      insertIndex = newOrder.length;
+      console.log('Dropping before Fixed group at end');
+    } else {
+      // Find the target's new position after removal and insert before it
+      const targetIndex = newOrder.indexOf(targetId);
+      insertIndex = targetIndex;
+      console.log(`Inserting before ${this.groups[targetId]?.name} at index ${insertIndex}`);
+    }
+    
+    // Insert dragged item at new position
+    newOrder.splice(insertIndex, 0, draggedId);
+    
+    this.groupOrder = newOrder;
+    console.log('New group order after:', this.groupOrder);
+    
+    await this.saveGroupOrder();
+    this.showNotification('Group order updated', 'success');
     this.render();
   }
 
@@ -649,10 +1045,30 @@ class ExtensionWranglerSettings {
       this.renderAllExtensions();
     }
     this.updateSummary();
+    this.renderRemovedExtensionsHistory();
+    
+    // Debug: Check if drag handles are rendered
+    setTimeout(() => {
+      const dragHandles = document.querySelectorAll('.drag-handle');
+      const draggableCards = document.querySelectorAll('.group-card[draggable="true"]');
+      const allGroupCards = document.querySelectorAll('.group-card');
+      console.log(`🔍 Debug: Found ${dragHandles.length} drag handles, ${draggableCards.length} draggable cards, ${allGroupCards.length} total cards`);
+      
+      // Check each card
+      allGroupCards.forEach((card, index) => {
+        const isDraggable = card.getAttribute('draggable') === 'true';
+        console.log(`  Card ${index}: draggable=${isDraggable}, classes=${card.className}`);
+      });
+      
+      // Basic drag functionality check
+      if (draggableCards.length > 0) {
+        console.log(`✅ ${draggableCards.length} groups ready for drag-and-drop`);
+      }
+    }, 200);
   }
 
   renderGroups() {
-    const container = document.getElementById('groupsContainer');
+    const container = document.getElementById('groupsList');
     const emptyState = document.getElementById('emptyState');
     
     const groupIds = Object.keys(this.groups);
@@ -811,44 +1227,134 @@ class ExtensionWranglerSettings {
         });
       });
       
-      // Add drag and drop functionality (only for non-fixed groups)
+      // Add drag and drop functionality
       if (!group.isDefault) {
+        // Only non-Fixed groups can be dragged
         groupCard.draggable = true;
         
         groupCard.addEventListener('dragstart', (e) => {
-          this.draggedGroupId = group.id;
+          // Set drag data and visual feedback
           e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', group.id);
+          this.draggedGroupId = group.id; // Fallback
           groupCard.classList.add('dragging');
         });
         
-        groupCard.addEventListener('dragend', (e) => {
+        groupCard.addEventListener('dragend', () => {
           groupCard.classList.remove('dragging');
-          this.draggedGroupId = null;
-        });
-        
-        groupCard.addEventListener('dragover', (e) => {
-          e.preventDefault();
-          if (this.draggedGroupId && this.draggedGroupId !== group.id) {
-            groupCard.classList.add('drag-over');
-          }
-        });
-        
-        groupCard.addEventListener('dragleave', (e) => {
-          groupCard.classList.remove('drag-over');
-        });
-        
-        groupCard.addEventListener('drop', (e) => {
-          e.preventDefault();
-          groupCard.classList.remove('drag-over');
-          
-          if (this.draggedGroupId && this.draggedGroupId !== group.id) {
-            this.reorderGroups(this.draggedGroupId, group.id);
-          }
+          document.querySelectorAll('.group-card').forEach(card => {
+            card.classList.remove('drag-over');
+          });
+          // FIX: Use setTimeout to prevent race condition with drop event
+          setTimeout(() => {
+            this.draggedGroupId = null;
+          }, 0);
         });
       }
       
+      // ALL groups can be drop targets (including Fixed group for positioning)
+      groupCard.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        
+        const draggedId = e.dataTransfer.getData('text/plain');
+        if (draggedId && draggedId !== group.id) {
+          groupCard.classList.add('drag-over');
+        }
+      });
+      
+      groupCard.addEventListener('dragleave', () => {
+        groupCard.classList.remove('drag-over');
+      });
+      
+      groupCard.addEventListener('drop', (e) => {
+        e.preventDefault();
+        groupCard.classList.remove('drag-over');
+
+        let draggedId = e.dataTransfer.getData('text/plain');
+        // Fallback to stored property if dataTransfer is empty
+        if (!draggedId) {
+          draggedId = this.draggedGroupId;
+          console.log('[Drag Debug] Used fallback draggedGroupId:', draggedId);
+        }
+
+        if (draggedId && draggedId !== group.id) {
+          this.reorderGroups(draggedId, group.id);
+        }
+      });
+      
       container.appendChild(groupCard);
     });
+  }
+
+  async renderRemovedExtensionsHistory() {
+    try {
+      const result = await chrome.storage.sync.get(['removedExtensions']);
+      const removedExtensions = result.removedExtensions || [];
+      
+      const container = document.getElementById('removedExtensionsList');
+      
+      if (removedExtensions.length === 0) {
+        container.innerHTML = '<div style="color: #5f6368; padding: 16px; text-align: center;">No recently removed extensions</div>';
+        document.getElementById('clearHistoryBtn').style.display = 'none';
+        return;
+      }
+      
+      document.getElementById('clearHistoryBtn').style.display = 'block';
+      
+      container.innerHTML = '';
+      
+      // Show most recent first
+      removedExtensions.slice(0, 10).forEach(ext => {
+        const div = document.createElement('div');
+        div.style.cssText = `
+          padding: 8px 12px;
+          border-bottom: 1px solid #f0f0f0;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        `;
+        
+        const date = new Date(ext.removedAt).toLocaleDateString();
+        const time = new Date(ext.removedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        
+        div.innerHTML = `
+          <div>
+            <div style="font-weight: 500; color: #1a1a1a;">${ext.name}</div>
+            <div style="font-size: 12px; color: #5f6368;">from "${ext.groupName}"</div>
+          </div>
+          <div style="font-size: 11px; color: #5f6368; text-align: right;">
+            <div>${date}</div>
+            <div>${time}</div>
+          </div>
+        `;
+        
+        container.appendChild(div);
+      });
+      
+      if (removedExtensions.length > 10) {
+        const moreDiv = document.createElement('div');
+        moreDiv.style.cssText = 'padding: 8px 12px; color: #5f6368; font-size: 12px; text-align: center;';
+        moreDiv.textContent = `... and ${removedExtensions.length - 10} more`;
+        container.appendChild(moreDiv);
+      }
+      
+    } catch (error) {
+      console.error('Failed to render removal history:', error);
+    }
+  }
+
+  async clearRemovedExtensionsHistory() {
+    if (confirm('Clear all removal history? This cannot be undone.')) {
+      try {
+        await chrome.storage.sync.remove(['removedExtensions']);
+        this.renderRemovedExtensionsHistory();
+        this.showNotification('Removal history cleared', 'success');
+      } catch (error) {
+        console.error('Failed to clear removal history:', error);
+        this.showNotification('Failed to clear history', 'error');
+      }
+    }
   }
 }
 

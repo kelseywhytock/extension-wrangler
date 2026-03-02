@@ -10,26 +10,39 @@ class ExtensionOrganizer {
   async init() {
     console.log('🚀 Initializing Extension Wrangler...');
     console.log(`🕰️ Popup opened at: ${new Date().toLocaleString()}`);
-    
+
     // Store initialization timestamp
     this.initTime = Date.now();
-    
+
+    // Run Web Store diagnostics first
+    if (window.webStoreUtils) {
+      await window.webStoreUtils.runDiagnostics();
+    }
+
     // Load extensions FIRST
     console.log('📦 Loading extensions...');
     await this.loadExtensions();
     console.log(`✅ Loaded ${Object.keys(this.extensions).length} extensions`);
-    
+
     // Then load data (which needs extensions for cleanup)
     console.log('💾 Loading saved data...');
     await this.loadData();
     console.log(`✅ Loaded ${Object.keys(this.groups).length} groups`);
-    
+
     this.setupEventListeners();
     this.render();
-    
+
     // Check for previous failures
     this.checkFailureHistory();
-    
+
+    // Check storage quota if Web Store utils available
+    if (window.webStoreUtils) {
+      const quotaInfo = await window.webStoreUtils.checkSyncStorageQuota();
+      if (quotaInfo.isNearQuota) {
+        console.warn(`[Web Store Debug] Storage quota warning: ${quotaInfo.usagePercentage}% used`);
+      }
+    }
+
     // Log summary
     console.log('📊 Initialization complete:', {
       extensionsLoaded: Object.keys(this.extensions).length,
@@ -38,12 +51,68 @@ class ExtensionOrganizer {
     });
   }
 
+  async migrateFromLocalStorage() {
+    try {
+      // Check if migration has already been completed
+      const migrationResult = await chrome.storage.sync.get(['migrationCompleted']);
+      if (migrationResult.migrationCompleted) {
+        return; // Migration already completed, skip
+      }
+
+      // Check if sync storage is empty and local storage has data
+      const syncResult = await chrome.storage.sync.get(['groups', 'groupOrder', 'failedToggles']);
+      const localResult = await chrome.storage.local.get(['groups', 'groupOrder', 'failedToggles']);
+
+      const hasSyncData = syncResult.groups && Object.keys(syncResult.groups).length > 0;
+      const hasLocalData = localResult.groups && Object.keys(localResult.groups).length > 0;
+
+      if (!hasSyncData && hasLocalData) {
+        console.log('[Web Store Debug] Migrating extension groups from local storage to sync storage...');
+
+        // Copy data to sync storage
+        const dataToMigrate = {};
+        if (localResult.groups) dataToMigrate.groups = localResult.groups;
+        if (localResult.groupOrder) dataToMigrate.groupOrder = localResult.groupOrder;
+        if (localResult.failedToggles) dataToMigrate.failedToggles = localResult.failedToggles;
+
+        if (Object.keys(dataToMigrate).length > 0) {
+          try {
+            await chrome.storage.sync.set(dataToMigrate);
+
+            // Mark migration as completed
+            await chrome.storage.sync.set({ migrationCompleted: true });
+
+            // Clear local storage to avoid confusion
+            await chrome.storage.local.remove(['groups', 'groupOrder', 'failedToggles']);
+
+            console.log('[Web Store Debug] Migration completed successfully');
+          } catch (migrationError) {
+            console.error('[Web Store Debug] Migration failed:', migrationError);
+
+            // If migration fails due to quota, keep using local storage
+            if (migrationError.message && migrationError.message.includes('QUOTA')) {
+              console.log('[Web Store Debug] Migration failed due to quota - keeping local storage');
+              return;
+            }
+            throw migrationError;
+          }
+        }
+      } else {
+        // Mark migration as completed even if no data to migrate
+        await chrome.storage.sync.set({ migrationCompleted: true });
+      }
+    } catch (error) {
+      console.error('[Web Store Debug] Failed to migrate from local storage:', error);
+      // Don't throw - allow the extension to continue with current data
+    }
+  }
+
   async checkFailureHistory() {
     try {
-      const result = await chrome.storage.local.get(['failedToggles']);
+      const result = await chrome.storage.sync.get(['failedToggles']);
       if (result.failedToggles && result.failedToggles.length > 0) {
         console.warn('🚨 Previous toggle failures detected:', result.failedToggles.length);
-        console.log('To analyze failures, run: chrome.storage.local.get(["failedToggles"], (r) => console.table(r.failedToggles))');
+        console.log('To analyze failures, run: chrome.storage.sync.get(["failedToggles"], (r) => console.table(r.failedToggles))');
       }
     } catch (error) {
       console.error('Failed to check failure history:', error);
@@ -52,7 +121,10 @@ class ExtensionOrganizer {
 
   async loadData() {
     try {
-      const result = await chrome.storage.local.get(['groups', 'groupOrder']);
+      // First, try to migrate from local storage to sync storage
+      await this.migrateFromLocalStorage();
+
+      const result = await chrome.storage.sync.get(['groups', 'groupOrder']);
       this.groups = result.groups || {};
       this.groupOrder = result.groupOrder || [];
 
@@ -72,20 +144,58 @@ class ExtensionOrganizer {
         this.groupOrder = Object.keys(this.groups);
         await this.saveGroupOrder();
       }
-      
+
       // Clean up orphaned extensions after loading all data
       await this.cleanupOrphanedExtensions();
+
+      // Log successful load for Web Store debugging
+      console.log(`[Web Store Debug] Data loaded successfully:`, {
+        groupsCount: Object.keys(this.groups).length,
+        totalExtensionsInGroups: Object.values(this.groups).reduce((sum, g) => sum + g.extensions.length, 0),
+        storageType: 'sync',
+        timestamp: new Date().toISOString()
+      });
+
     } catch (error) {
       console.error('Failed to load data:', error);
-      this.groups = {
-        'always-on': {
-          id: 'always-on',
-          name: 'Fixed',
-          extensions: [],
-          isDefault: true
+
+      // Enhanced error logging for Web Store issues
+      console.error(`[Web Store Debug] Data load failed:`, {
+        error: error.message,
+        errorCode: error.code || 'unknown',
+        timestamp: new Date().toISOString(),
+        operation: 'loadData',
+        storageType: 'sync'
+      });
+
+      // Fallback to local storage
+      try {
+        console.log(`[Web Store Debug] Attempting fallback to local storage...`);
+        const localResult = await chrome.storage.local.get(['groups', 'groupOrder']);
+
+        if (localResult.groups && Object.keys(localResult.groups).length > 0) {
+          this.groups = localResult.groups;
+          this.groupOrder = localResult.groupOrder || Object.keys(localResult.groups);
+          console.log(`[Web Store Debug] Fallback successful - loaded from local storage`);
+        } else {
+          throw new Error('No data found in local storage either');
         }
-      };
-      this.groupOrder = ['always-on'];
+      } catch (fallbackError) {
+        console.error(`[Web Store Debug] Fallback also failed:`, fallbackError);
+
+        // Final fallback to default state
+        this.groups = {
+          'always-on': {
+            id: 'always-on',
+            name: 'Fixed',
+            extensions: [],
+            isDefault: true
+          }
+        };
+        this.groupOrder = ['always-on'];
+
+        console.log(`[Web Store Debug] Using default state due to storage failures`);
+      }
     }
   }
 
@@ -98,6 +208,7 @@ class ExtensionOrganizer {
     
     let hasChanges = false;
     const validExtensionIds = new Set(Object.keys(this.extensions));
+    const removedExtensions = [];
     
     // Safety check - if no extensions loaded, don't clean up
     if (validExtensionIds.size === 0) {
@@ -108,60 +219,201 @@ class ExtensionOrganizer {
     console.log(`🧹 Checking for orphaned extensions (${validExtensionIds.size} valid extensions found)...`);
     
     // Check each group for orphaned extensions
-    for (const [groupId, group] of Object.entries(this.groups)) {
+    for (const [, group] of Object.entries(this.groups)) {
       const originalLength = group.extensions.length;
-      const beforeExtensions = [...group.extensions]; // Keep track of what we're removing
+      const beforeExtensions = [...group.extensions];
       
-      // Filter out extensions that no longer exist
-      group.extensions = group.extensions.filter(extId => {
+      // Filter out extensions that no longer exist and track what we're removing
+      const extensionsToKeep = [];
+      for (const extId of group.extensions) {
         const exists = validExtensionIds.has(extId);
-        if (!exists) {
-          console.warn(`Removing orphaned extension ${extId} from group "${group.name}"`);
+        if (exists) {
+          extensionsToKeep.push(extId);
+        } else {
+          // Try to get the extension name from our cached data or use the ID
+          const extensionName = await this.getCachedExtensionName(extId);
+          removedExtensions.push({
+            id: extId,
+            name: extensionName,
+            groupName: group.name
+          });
+          console.warn(`Removing orphaned extension ${extensionName} (${extId}) from group "${group.name}"`);
         }
-        return exists;
-      });
+      }
+      group.extensions = extensionsToKeep;
       
       if (group.extensions.length !== originalLength) {
         hasChanges = true;
         const removed = beforeExtensions.filter(id => !group.extensions.includes(id));
-        console.log(`Cleaned ${removed.length} orphaned extension(s) from group "${group.name}":`, removed);
+        console.log(`Cleaned ${removed.length} orphaned extension(s) from group "${group.name}"`);
       }
     }
     
-    // Save changes if any orphaned extensions were removed
+    // Save changes and track removals if any orphaned extensions were removed
     if (hasChanges) {
       await this.saveData();
+      await this.trackRemovedExtensions(removedExtensions);
       console.log('✅ Orphaned extensions cleanup complete');
+      
+      // Log removal summary for console users
+      if (removedExtensions.length > 0) {
+        this.logRemovedExtensions(removedExtensions);
+      }
     } else {
       console.log('✅ No orphaned extensions found');
     }
   }
 
-  async loadExtensions() {
-    try {
-      const extensions = await chrome.management.getAll();
-      this.extensions = {};
+  async getCachedExtensionName(extensionId) {
+    // Try to get the name from our cached extension names
+    const cache = await this.getCachedRemovedExtensions();
+    const cached = cache[extensionId];
+    return cached ? cached.name : extensionId.slice(0, 8) + '...';
+  }
 
-      extensions.forEach(ext => {
-        if (ext.type === 'extension' && ext.id !== chrome.runtime.id) {
-          this.extensions[ext.id] = ext;
-        }
+  async cacheExtensionNames() {
+    try {
+      // Get existing cached names
+      const result = await chrome.storage.sync.get(['extensionNameCache']);
+      const existingCache = result.extensionNameCache || {};
+      
+      // Add current extension names to cache
+      const updatedCache = { ...existingCache };
+      Object.values(this.extensions).forEach(ext => {
+        updatedCache[ext.id] = {
+          name: ext.name,
+          lastSeen: new Date().toISOString()
+        };
       });
       
-      // Verify we loaded extensions
-      if (Object.keys(this.extensions).length === 0) {
-        console.error('⚠️ WARNING: No extensions were loaded!');
-        // Try once more
-        console.log('🔄 Retrying extension load...');
-        const retryExtensions = await chrome.management.getAll();
-        retryExtensions.forEach(ext => {
-          if (ext.type === 'extension' && ext.id !== chrome.runtime.id) {
+      // Keep only the last 200 entries to avoid storage bloat
+      const entries = Object.entries(updatedCache)
+        .sort((a, b) => new Date(b[1].lastSeen) - new Date(a[1].lastSeen))
+        .slice(0, 200);
+      
+      const trimmedCache = Object.fromEntries(entries);
+      
+      // Save updated cache
+      await chrome.storage.sync.set({ extensionNameCache: trimmedCache });
+    } catch (error) {
+      console.error('Failed to cache extension names:', error);
+    }
+  }
+
+  async getCachedRemovedExtensions() {
+    try {
+      const result = await chrome.storage.sync.get(['extensionNameCache']);
+      return result.extensionNameCache || {};
+    } catch (error) {
+      console.error('Failed to get cached extension names:', error);
+      return {};
+    }
+  }
+
+  async trackRemovedExtensions(removedExtensions) {
+    if (removedExtensions.length === 0) return;
+    
+    try {
+      // Get existing removal history
+      const result = await chrome.storage.sync.get(['removedExtensions']);
+      const existingRemovals = result.removedExtensions || [];
+      
+      // Add new removals with timestamp
+      const newRemovals = removedExtensions.map(ext => ({
+        ...ext,
+        removedAt: new Date().toISOString(),
+        cleanedUp: true
+      }));
+      
+      // Keep only last 50 removals to avoid storage bloat
+      const allRemovals = [...newRemovals, ...existingRemovals].slice(0, 50);
+      
+      // Save to storage
+      await chrome.storage.sync.set({ removedExtensions: allRemovals });
+      
+      console.log('📝 Tracked removed extensions:', newRemovals);
+    } catch (error) {
+      console.error('Failed to track removed extensions:', error);
+    }
+  }
+
+  logRemovedExtensions(removedExtensions) {
+    // Log detailed information for popup users
+    console.group('🗑️ Extensions Removed from Groups');
+    removedExtensions.forEach(ext => {
+      console.log(`• "${ext.name}" removed from "${ext.groupName}"`);
+    });
+    console.groupEnd();
+  }
+
+  async loadExtensions() {
+    try {
+      console.log('🔄 Attempting to load extensions...');
+      let extensions = await chrome.management.getAll();
+
+      // Chrome Web Store fix: Retry if no extensions loaded or API returned empty/invalid result
+      if (!extensions || extensions.length === 0 || !Array.isArray(extensions)) {
+        console.warn('⚠️ Initial extension load failed or returned empty - retrying for Chrome Web Store compatibility...');
+
+        // Wait a bit for Chrome Web Store to fully initialize
+        await new Promise(resolve => setTimeout(resolve, 1500));
+
+        try {
+          extensions = await chrome.management.getAll();
+          console.log('🔄 Retry attempt completed, got:', extensions ? extensions.length : 'null', 'extensions');
+        } catch (retryError) {
+          console.error('❌ Retry attempt also failed:', retryError);
+          throw retryError;
+        }
+      }
+
+      // Reset extensions object
+      this.extensions = {};
+
+      // Process extensions with additional validation
+      if (extensions && Array.isArray(extensions)) {
+        extensions.forEach(ext => {
+          if (ext && ext.type === 'extension' && ext.id && ext.id !== chrome.runtime.id) {
             this.extensions[ext.id] = ext;
           }
         });
       }
+
+      const loadedCount = Object.keys(this.extensions).length;
+      console.log(`✅ Loaded ${loadedCount} extensions`);
+
+      // Enhanced debugging for Chrome Web Store issues
+      console.log(`[Web Store Debug] Extension loading details:`, {
+        rawExtensionsCount: extensions ? extensions.length : 'null',
+        filteredExtensionsCount: loadedCount,
+        extensionIds: Object.keys(this.extensions),
+        timestamp: new Date().toISOString()
+      });
+
+      // Cache extension names for future reference
+      await this.cacheExtensionNames();
+
+      // Verify we loaded extensions with more detailed warning
+      if (loadedCount === 0) {
+        console.warn('⚠️ WARNING: No extensions were loaded!');
+        console.warn('This could indicate:');
+        console.warn('- Chrome Web Store security restrictions');
+        console.warn('- Extension permissions not granted');
+        console.warn('- API timing issues');
+        console.warn('- Genuinely no other extensions installed');
+      }
     } catch (error) {
-      console.error('Failed to load extensions:', error);
+      console.error('❌ Failed to load extensions:', error);
+
+      // Enhanced error logging for Chrome Web Store debugging
+      console.error(`[Web Store Debug] Extension loading failed:`, {
+        error: error.message,
+        errorCode: error.code || 'unknown',
+        stack: error.stack,
+        timestamp: new Date().toISOString(),
+        userAgent: navigator.userAgent
+      });
+
       // Set a flag to prevent cleanup
       this.extensionLoadError = true;
     }
@@ -169,17 +421,55 @@ class ExtensionOrganizer {
 
   async saveData() {
     try {
-      await chrome.storage.local.set({ groups: this.groups });
+      await chrome.storage.sync.set({ groups: this.groups });
+
+      // Log successful save for Web Store debugging
+      console.log(`[Web Store Debug] Data saved successfully:`, {
+        groupsCount: Object.keys(this.groups).length,
+        totalExtensionsInGroups: Object.values(this.groups).reduce((sum, g) => sum + g.extensions.length, 0),
+        storageType: 'sync',
+        timestamp: new Date().toISOString()
+      });
+
     } catch (error) {
       console.error('Failed to save data:', error);
+
+      // Enhanced error logging for Web Store issues
+      console.error(`[Web Store Debug] Data save failed:`, {
+        error: error.message,
+        errorCode: error.code || 'unknown',
+        timestamp: new Date().toISOString(),
+        operation: 'saveData',
+        storageType: 'sync',
+        dataSize: JSON.stringify(this.groups).length
+      });
+      throw error;
     }
   }
 
   async saveGroupOrder() {
     try {
-      await chrome.storage.local.set({ groupOrder: this.groupOrder });
+      await chrome.storage.sync.set({ groupOrder: this.groupOrder });
+
+      // Log successful save for Web Store debugging
+      console.log(`[Web Store Debug] Group order saved successfully:`, {
+        orderLength: this.groupOrder.length,
+        storageType: 'sync',
+        timestamp: new Date().toISOString()
+      });
+
     } catch (error) {
       console.error('Failed to save group order:', error);
+
+      // Enhanced error logging for Web Store issues
+      console.error(`[Web Store Debug] Group order save failed:`, {
+        error: error.message,
+        errorCode: error.code || 'unknown',
+        timestamp: new Date().toISOString(),
+        operation: 'saveGroupOrder',
+        storageType: 'sync'
+      });
+      throw error;
     }
   }
 
@@ -231,22 +521,27 @@ class ExtensionOrganizer {
 
   async showDebugInfo() {
     console.group('🐛 Extension Wrangler Debug Info');
-    
+
+    // Run Web Store diagnostics first
+    if (window.webStoreUtils) {
+      await window.webStoreUtils.runDiagnostics();
+    }
+
     // Show failed toggles
-    const failedResult = await chrome.storage.local.get(['failedToggles']);
+    const failedResult = await chrome.storage.sync.get(['failedToggles']);
     if (failedResult.failedToggles && failedResult.failedToggles.length > 0) {
       console.log('🔴 Failed Toggle History:');
       console.table(failedResult.failedToggles);
     } else {
       console.log('✅ No failed toggles recorded');
     }
-    
+
     // Show current groups
     console.log('\n📁 Current Groups:');
     Object.values(this.groups).forEach(group => {
       console.log(`- ${group.name}: ${group.extensions.length} extensions`);
     });
-    
+
     // Show extension states
     console.log('\n🧬 Extension Analysis:');
     const extensionStats = {
@@ -256,7 +551,7 @@ class ExtensionOrganizer {
       byDisabledReason: {},
       byInstallType: {}
     };
-    
+
     Object.values(this.extensions).forEach(ext => {
       extensionStats.total++;
       if (ext.enabled) {
@@ -264,44 +559,50 @@ class ExtensionOrganizer {
       } else {
         extensionStats.disabled++;
         if (ext.disabledReason) {
-          extensionStats.byDisabledReason[ext.disabledReason] = 
+          extensionStats.byDisabledReason[ext.disabledReason] =
             (extensionStats.byDisabledReason[ext.disabledReason] || 0) + 1;
         }
       }
       if (ext.installType) {
-        extensionStats.byInstallType[ext.installType] = 
+        extensionStats.byInstallType[ext.installType] =
           (extensionStats.byInstallType[ext.installType] || 0) + 1;
       }
     });
-    
+
     console.table(extensionStats);
-    
+
     // Show problematic extensions
-    const problematic = Object.values(this.extensions).filter(ext => 
-      ext.disabledReason === 'unknown' || 
+    const problematic = Object.values(this.extensions).filter(ext =>
+      ext.disabledReason === 'unknown' ||
       ext.disabledReason === 'permissions_increase' ||
       ext.installType === 'admin'
     );
-    
+
     if (problematic.length > 0) {
       console.log('\n⚠️  Potentially Problematic Extensions:');
       problematic.forEach(ext => {
         console.log(`- ${ext.name}: ${ext.disabledReason || 'N/A'} (${ext.installType})`);
       });
     }
-    
-    console.log('\n📝 To clear failed toggle history, run:');
-    console.log('chrome.storage.local.remove(["failedToggles"])');
-    console.log('\n🧹 To manually clean orphaned extensions, run:');
-    console.log('await window.organizer.cleanupOrphanedExtensions()');
-    console.log('\n💾 To backup your groups, run:');
-    console.log('copy(JSON.stringify(window.organizer.groups))');
-    console.log('\n🔄 To restore groups from backup, run:');
-    console.log('window.organizer.restoreGroups(YOUR_BACKUP_JSON)');
-    
+
+    // Storage quota info
+    if (window.webStoreUtils) {
+      const quotaInfo = await window.webStoreUtils.checkSyncStorageQuota();
+      console.log('\n💾 Storage Quota Status:');
+      console.table(quotaInfo);
+    }
+
+    console.log('\n📝 Debugging Commands:');
+    console.log('🔍 Run diagnostics: await window.webStoreUtils.runDiagnostics()');
+    console.log('🧹 Clean orphaned extensions: await window.organizer.cleanupOrphanedExtensions()');
+    console.log('💾 Backup groups: copy(JSON.stringify(window.organizer.groups))');
+    console.log('🔄 Restore groups: window.organizer.restoreGroups(YOUR_BACKUP_JSON)');
+    console.log('🗑️ Clear failed toggles: chrome.storage.sync.remove(["failedToggles"])');
+    console.log('📊 Storage analysis: await window.webStoreUtils.analyzeStorageUsage()');
+
     console.groupEnd();
-    
-    // Make organizer available for debugging
+
+    // Make organizer and utils available for debugging
     window.organizer = this;
   }
 
@@ -541,7 +842,7 @@ class ExtensionOrganizer {
     }
     
     // Store in chrome.storage.local for persistence and debugging
-    chrome.storage.local.set({ failedToggles: this.failedToggles });
+    chrome.storage.sync.set({ failedToggles: this.failedToggles });
   }
 
   setGroupLoadingState(groupId, isLoading) {
@@ -690,7 +991,6 @@ class ExtensionOrganizer {
 
   toggleAccordion(groupId) {
     const extensionsDiv = document.querySelector(`.group-extensions[data-group-id="${groupId}"]`);
-    const expandIcon = document.querySelector(`.group [data-group-id="${groupId}"] .group-expand-icon`);
 
     if (!extensionsDiv) return;
 

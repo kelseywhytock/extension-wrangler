@@ -96,9 +96,11 @@ Extension Wrangler is open source. You can review our code to verify our privacy
 
 ## Contact Information
 
-For privacy-related questions or concerns about Extension Wrangler:
-- Submit an issue on our GitHub repository
-- Email: [your-email@example.com]
+For questions about this privacy policy or the extension, contact:
+
+**Kelsey Whytock**
+Email: contact@example.com
+Website: https://github.com/kelseywhytock
 
 ## Compliance
 

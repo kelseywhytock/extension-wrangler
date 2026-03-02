@@ -16,10 +16,10 @@ chrome.management.onDisabled.addListener(async (info) => {
 
 async function handleExtensionStateChange(extensionId, enabled) {
   try {
-    // Get stored groups
-    const result = await chrome.storage.local.get(['groups']);
+    // Get stored groups from sync storage for consistency
+    const result = await chrome.storage.sync.get(['groups']);
     const groups = result.groups || {};
-    
+
     // Check if extension is in "Fixed" group
     const alwaysOnGroup = groups['always-on'];
     if (alwaysOnGroup && alwaysOnGroup.extensions.includes(extensionId)) {
@@ -30,14 +30,60 @@ async function handleExtensionStateChange(extensionId, enabled) {
           try {
             await chrome.management.setEnabled(extensionId, true);
             console.log(`Re-enabled "Fixed" extension: ${extensionId}`);
+
+            // Log for Web Store debugging
+            console.log(`[Web Store Debug] Fixed extension re-enabled:`, {
+              extensionId,
+              timestamp: new Date().toISOString(),
+              storageType: 'sync'
+            });
           } catch (error) {
             console.error(`Failed to re-enable "Fixed" extension ${extensionId}:`, error);
+
+            // Enhanced error logging for Web Store issues
+            console.error(`[Web Store Debug] Re-enable failed:`, {
+              extensionId,
+              error: error.message,
+              errorCode: error.code || 'unknown',
+              timestamp: new Date().toISOString(),
+              storageType: 'sync'
+            });
           }
         }, 100);
       }
     }
   } catch (error) {
     console.error('Error handling extension state change:', error);
+
+    // Enhanced error logging for Web Store debugging
+    console.error(`[Web Store Debug] Storage access failed:`, {
+      extensionId,
+      error: error.message,
+      errorCode: error.code || 'unknown',
+      timestamp: new Date().toISOString(),
+      operation: 'handleExtensionStateChange'
+    });
+
+    // Fallback to local storage if sync fails
+    try {
+      console.log(`[Web Store Debug] Attempting fallback to local storage...`);
+      const localResult = await chrome.storage.local.get(['groups']);
+      const localGroups = localResult.groups || {};
+
+      const alwaysOnGroup = localGroups['always-on'];
+      if (alwaysOnGroup && alwaysOnGroup.extensions.includes(extensionId) && !enabled) {
+        setTimeout(async () => {
+          try {
+            await chrome.management.setEnabled(extensionId, true);
+            console.log(`Re-enabled "Fixed" extension via fallback: ${extensionId}`);
+          } catch (fallbackError) {
+            console.error(`Fallback re-enable failed for ${extensionId}:`, fallbackError);
+          }
+        }, 100);
+      }
+    } catch (fallbackError) {
+      console.error('Fallback storage access also failed:', fallbackError);
+    }
   }
 }
 
