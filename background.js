@@ -1,11 +1,29 @@
 // Background script for Extension Organizer
 
+const ALWAYS_ON_GROUP_ID = 'always-on';
+
+async function getGroupsWithFallback() {
+  try {
+    const result = await chrome.storage.sync.get(['groups']);
+    if (result.groups && Object.keys(result.groups).length > 0) {
+      return result.groups;
+    }
+  } catch (_) {}
+  // Fallback to local storage on new device or sync unavailability
+  try {
+    const local = await chrome.storage.local.get(['groups']);
+    return local.groups || {};
+  } catch (_) {
+    return {};
+  }
+}
+
 // Handle installation
 chrome.runtime.onInstalled.addListener(() => {
   console.log('Extension Organizer installed');
 });
 
-// Listen for extension state changes to keep "Fixed" group enabled
+// Listen for extension state changes to keep "Always On" group enabled
 chrome.management.onEnabled.addListener(async (info) => {
   await handleExtensionStateChange(info.id, true);
 });
@@ -16,29 +34,28 @@ chrome.management.onDisabled.addListener(async (info) => {
 
 async function handleExtensionStateChange(extensionId, enabled) {
   try {
-    // Get stored groups from sync storage for consistency
-    const result = await chrome.storage.sync.get(['groups']);
-    const groups = result.groups || {};
+    // Get stored groups with sync→local fallback for new-device race
+    const groups = await getGroupsWithFallback();
 
-    // Check if extension is in "Fixed" group
-    const alwaysOnGroup = groups['always-on'];
+    // Check if extension is in "Always On" group
+    const alwaysOnGroup = groups[ALWAYS_ON_GROUP_ID];
     if (alwaysOnGroup && alwaysOnGroup.extensions.includes(extensionId)) {
-      // If a "Fixed" extension was disabled, re-enable it
+      // If an "Always On" extension was disabled, re-enable it
       if (!enabled) {
         // Small delay to avoid conflicts
         setTimeout(async () => {
           try {
             await chrome.management.setEnabled(extensionId, true);
-            console.log(`Re-enabled "Fixed" extension: ${extensionId}`);
+            console.log(`Re-enabled "Always On" extension: ${extensionId}`);
 
             // Log for Web Store debugging
-            console.log(`[Web Store Debug] Fixed extension re-enabled:`, {
+            console.log(`[Web Store Debug] Always On extension re-enabled:`, {
               extensionId,
               timestamp: new Date().toISOString(),
               storageType: 'sync'
             });
           } catch (error) {
-            console.error(`Failed to re-enable "Fixed" extension ${extensionId}:`, error);
+            console.error(`Failed to re-enable "Always On" extension ${extensionId}:`, error);
 
             // Enhanced error logging for Web Store issues
             console.error(`[Web Store Debug] Re-enable failed:`, {
@@ -63,27 +80,6 @@ async function handleExtensionStateChange(extensionId, enabled) {
       timestamp: new Date().toISOString(),
       operation: 'handleExtensionStateChange'
     });
-
-    // Fallback to local storage if sync fails
-    try {
-      console.log(`[Web Store Debug] Attempting fallback to local storage...`);
-      const localResult = await chrome.storage.local.get(['groups']);
-      const localGroups = localResult.groups || {};
-
-      const alwaysOnGroup = localGroups['always-on'];
-      if (alwaysOnGroup && alwaysOnGroup.extensions.includes(extensionId) && !enabled) {
-        setTimeout(async () => {
-          try {
-            await chrome.management.setEnabled(extensionId, true);
-            console.log(`Re-enabled "Fixed" extension via fallback: ${extensionId}`);
-          } catch (fallbackError) {
-            console.error(`Fallback re-enable failed for ${extensionId}:`, fallbackError);
-          }
-        }, 100);
-      }
-    } catch (fallbackError) {
-      console.error('Fallback storage access also failed:', fallbackError);
-    }
   }
 }
 
