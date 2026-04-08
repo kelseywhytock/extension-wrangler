@@ -70,51 +70,49 @@ class ExtensionWranglerSettings {
       }
       // --- End device-local key cleanup ---
 
-      // Check if migration has already been completed
-      const migrationResult = await chrome.storage.sync.get(['migrationCompleted']);
-      if (migrationResult.migrationCompleted) {
-        return; // Migration already completed, skip
-      }
+      // --- Groups migration: local storage → sync storage ---
+      // Only run if there is actual local data to migrate up.
+      // Do NOT set migrationCompleted on a fresh device where sync hasn't propagated yet —
+      // that races with sync propagation and can permanently block groups from loading.
 
-      // Check if sync storage is empty and local storage has data
-      const syncResult = await chrome.storage.sync.get(['groups', 'groupOrder']);
       const localResult = await chrome.storage.local.get(['groups', 'groupOrder']);
-
-      const hasSyncData = syncResult.groups && Object.keys(syncResult.groups).length > 0;
       const hasLocalData = localResult.groups && Object.keys(localResult.groups).length > 0;
 
-      if (!hasSyncData && hasLocalData) {
-        console.log('[Web Store Debug] 🔄 Migrating extension groups from local storage to sync storage...');
+      if (!hasLocalData) {
+        // Nothing to migrate — fresh install or already migrated.
+        // Do NOT write migrationCompleted here; if sync has groups they'll load fine.
+        return;
+      }
 
-        try {
-          // Copy data to sync storage
-          await chrome.storage.sync.set({
-            groups: localResult.groups,
-            groupOrder: localResult.groupOrder || []
-          });
+      // Local has data. Check if sync already has groups too.
+      const syncResult = await chrome.storage.sync.get(['groups']);
+      const hasSyncData = syncResult.groups && Object.keys(syncResult.groups).length > 0;
 
-          // Mark migration as completed
-          await chrome.storage.sync.set({ migrationCompleted: true });
+      if (hasSyncData) {
+        // Sync wins — discard the stale local copy.
+        await chrome.storage.local.remove(['groups', 'groupOrder']);
+        console.log('[Sync Fix] Sync has data — cleared stale local copy of groups');
+        return;
+      }
 
-          // Clear local storage to avoid confusion
-          await chrome.storage.local.remove(['groups', 'groupOrder']);
+      // Local has data, sync is empty: safe to migrate up.
+      console.log('[Sync Fix] Migrating groups from local to sync storage...');
+      const dataToMigrate = {};
+      if (localResult.groups) dataToMigrate.groups = localResult.groups;
+      if (localResult.groupOrder) dataToMigrate.groupOrder = localResult.groupOrder;
 
-          this.showNotification('Settings migrated to Chrome sync', 'success');
-          console.log('[Web Store Debug] Migration completed successfully');
-        } catch (migrationError) {
-          console.error('[Web Store Debug] Migration failed:', migrationError);
-
-          // If migration fails due to quota, keep using local storage
-          if (migrationError.message && migrationError.message.includes('QUOTA')) {
-            console.log('[Web Store Debug] Migration failed due to quota - keeping local storage');
-            this.showNotification('Using local storage due to sync quota limits', 'info');
-            return;
-          }
-          throw migrationError;
+      try {
+        await chrome.storage.sync.set(dataToMigrate);
+        await chrome.storage.local.remove(['groups', 'groupOrder']);
+        this.showNotification('Settings migrated to Chrome sync', 'success');
+        console.log('[Sync Fix] Groups migrated successfully');
+      } catch (migrationError) {
+        console.error('[Sync Fix] Groups migration failed:', migrationError);
+        if (migrationError.message && migrationError.message.includes('QUOTA')) {
+          console.log('[Sync Fix] Migration failed due to quota — keeping local storage');
+          this.showNotification('Using local storage due to sync quota limits', 'info');
         }
-      } else {
-        // Mark migration as completed even if no data to migrate
-        await chrome.storage.sync.set({ migrationCompleted: true });
+        // Do not rethrow — extension continues working from local data
       }
     } catch (error) {
       console.error('[Web Store Debug] Failed to migrate from local storage:', error);
