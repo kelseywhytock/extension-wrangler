@@ -873,9 +873,9 @@ class ExtensionWranglerSettings {
       });
       // Re-append in the new order (Fixed group card stays last)
       newOrder.forEach(id => {
-        if (cardMap[id]) container.appendChild(cardMap[id]);
+        if (cardMap[id] && !this.groups[id]?.isDefault) container.appendChild(cardMap[id]);
       });
-      // Ensure Fixed group card is last
+      // Always On group card goes last
       const fixedCard = cards.find(card => {
         const header = card.querySelector('[data-group-id]');
         return header && this.groups[header.dataset.groupId]?.isDefault;
