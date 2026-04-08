@@ -77,6 +77,14 @@ class ExtensionWranglerSettings {
         // Mark migration as completed even if no data to migrate
         await chrome.storage.sync.set({ migrationCompleted: true });
       }
+
+      // One-time: move extensionNameCache out of sync storage into local
+      const staleCache = await chrome.storage.sync.get(['extensionNameCache']);
+      if (staleCache.extensionNameCache) {
+        await chrome.storage.local.set({ extensionNameCache: staleCache.extensionNameCache });
+        await chrome.storage.sync.remove(['extensionNameCache']);
+        console.log('[Sync Fix] Moved extensionNameCache from sync to local storage');
+      }
     } catch (error) {
       console.error('[Web Store Debug] Failed to migrate from local storage:', error);
       // Don't throw - allow the extension to continue with current data
