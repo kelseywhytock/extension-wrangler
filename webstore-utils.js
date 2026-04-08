@@ -94,18 +94,21 @@ class WebStoreUtils {
   async checkSyncStatus() {
     const TEST_KEY = '__sync_probe__';
     const TEST_VALUE = Date.now();
-
     try {
       await chrome.storage.sync.set({ [TEST_KEY]: TEST_VALUE });
       const result = await chrome.storage.sync.get([TEST_KEY]);
-      await chrome.storage.sync.remove([TEST_KEY]);
-
       const syncWorking = result[TEST_KEY] === TEST_VALUE;
       console.log('[Sync Fix] Sync probe result:', syncWorking ? 'operational' : 'not working');
       return { operational: syncWorking, error: null };
     } catch (error) {
       console.warn('[Sync Fix] Sync probe failed:', error.message);
       return { operational: false, error: error.message };
+    } finally {
+      try {
+        await chrome.storage.sync.remove([TEST_KEY]);
+      } catch (_) {
+        // Best-effort cleanup — do not override the primary result
+      }
     }
   }
 
