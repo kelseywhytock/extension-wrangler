@@ -89,6 +89,26 @@ class WebStoreUtils {
     }
   }
 
+  // Probe whether chrome.storage.sync is actually operational.
+  // Chrome provides no direct isEnabled() API, so we write and read a test key.
+  async checkSyncStatus() {
+    const TEST_KEY = '__sync_probe__';
+    const TEST_VALUE = Date.now();
+
+    try {
+      await chrome.storage.sync.set({ [TEST_KEY]: TEST_VALUE });
+      const result = await chrome.storage.sync.get([TEST_KEY]);
+      await chrome.storage.sync.remove([TEST_KEY]);
+
+      const syncWorking = result[TEST_KEY] === TEST_VALUE;
+      console.log('[Sync Fix] Sync probe result:', syncWorking ? 'operational' : 'not working');
+      return { operational: syncWorking, error: null };
+    } catch (error) {
+      console.warn('[Sync Fix] Sync probe failed:', error.message);
+      return { operational: false, error: error.message };
+    }
+  }
+
   // Get detailed storage analysis
   async analyzeStorageUsage() {
     try {
@@ -205,9 +225,11 @@ class WebStoreUtils {
     const quotaInfo = await this.checkSyncStorageQuota();
     const storageAnalysis = await this.analyzeStorageUsage();
     const optimalStorage = await this.getOptimalStorageAPI();
+    const syncStatus = await this.checkSyncStatus();  // ADD THIS LINE
 
     const diagnostics = {
       installationType: isWebStore ? 'Chrome Web Store' : 'Development/Manual',
+      syncStatus,                    // ADD THIS LINE
       quotaStatus: quotaInfo,
       storageUsage: storageAnalysis,
       recommendedStorage: optimalStorage,
