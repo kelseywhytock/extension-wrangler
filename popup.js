@@ -53,6 +53,45 @@ class ExtensionOrganizer {
 
   async migrateFromLocalStorage() {
     try {
+      // --- One-time cleanup: move device-local keys out of sync storage ---
+      // This runs independently of the original migration (which may already be complete).
+      const deviceMigration = await chrome.storage.sync.get(['deviceDataMigrated']);
+      if (!deviceMigration.deviceDataMigrated) {
+        // Move extensionNameCache: sync → local
+        const staleCache = await chrome.storage.sync.get(['extensionNameCache']);
+        if (staleCache.extensionNameCache) {
+          await chrome.storage.local.set({ extensionNameCache: staleCache.extensionNameCache });
+          await chrome.storage.sync.remove(['extensionNameCache']);
+          console.log('[Sync Fix] Moved extensionNameCache from sync to local storage');
+        }
+
+        // Move removedExtensions: sync → local (merge, don't overwrite)
+        const staleDeviceData = await chrome.storage.sync.get(['removedExtensions', 'failedToggles']);
+        if (staleDeviceData.removedExtensions) {
+          const localResult = await chrome.storage.local.get(['removedExtensions']);
+          const existing = localResult.removedExtensions || [];
+          const merged = [...staleDeviceData.removedExtensions, ...existing].slice(0, 50);
+          await chrome.storage.local.set({ removedExtensions: merged });
+          await chrome.storage.sync.remove(['removedExtensions']);
+          console.log('[Sync Fix] Moved removedExtensions from sync to local storage');
+        }
+
+        // Move failedToggles: sync → local (merge, don't overwrite)
+        if (staleDeviceData.failedToggles) {
+          const localResult = await chrome.storage.local.get(['failedToggles']);
+          const existing = localResult.failedToggles || [];
+          const merged = [...staleDeviceData.failedToggles, ...existing].slice(0, 100);
+          await chrome.storage.local.set({ failedToggles: merged });
+          await chrome.storage.sync.remove(['failedToggles']);
+          console.log('[Sync Fix] Moved failedToggles from sync to local storage');
+        }
+
+        // Mark device data migration complete
+        await chrome.storage.sync.set({ deviceDataMigrated: true });
+        console.log('[Sync Fix] Device data migration complete');
+      }
+      // --- End device-local key cleanup ---
+
       // Check if migration has already been completed
       const migrationResult = await chrome.storage.sync.get(['migrationCompleted']);
       if (migrationResult.migrationCompleted) {
@@ -99,27 +138,6 @@ class ExtensionOrganizer {
       } else {
         // Mark migration as completed even if no data to migrate
         await chrome.storage.sync.set({ migrationCompleted: true });
-      }
-
-      // One-time: move extensionNameCache out of sync storage into local
-      const staleCache = await chrome.storage.sync.get(['extensionNameCache']);
-      if (staleCache.extensionNameCache) {
-        await chrome.storage.local.set({ extensionNameCache: staleCache.extensionNameCache });
-        await chrome.storage.sync.remove(['extensionNameCache']);
-        console.log('[Sync Fix] Moved extensionNameCache from sync to local storage');
-      }
-
-      // One-time: move removedExtensions and failedToggles out of sync storage into local
-      const staleDeviceData = await chrome.storage.sync.get(['removedExtensions', 'failedToggles']);
-      if (staleDeviceData.removedExtensions) {
-        await chrome.storage.local.set({ removedExtensions: staleDeviceData.removedExtensions });
-        await chrome.storage.sync.remove(['removedExtensions']);
-        console.log('[Sync Fix] Moved removedExtensions from sync to local storage');
-      }
-      if (staleDeviceData.failedToggles) {
-        await chrome.storage.local.set({ failedToggles: staleDeviceData.failedToggles });
-        await chrome.storage.sync.remove(['failedToggles']);
-        console.log('[Sync Fix] Moved failedToggles from sync to local storage');
       }
     } catch (error) {
       console.error('[Web Store Debug] Failed to migrate from local storage:', error);
