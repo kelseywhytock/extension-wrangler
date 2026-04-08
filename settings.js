@@ -529,6 +529,13 @@ class ExtensionWranglerSettings {
         this.hideGroupModal();
       }
     });
+
+    // Close group dropdowns when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.group-dropdown')) {
+        document.querySelectorAll('.group-dropdown-content').forEach(d => d.classList.remove('show'));
+      }
+    });
   }
 
   switchTab(tabName) {
@@ -907,14 +914,6 @@ class ExtensionWranglerSettings {
       container.appendChild(div);
     });
 
-    // Close dropdowns when clicking outside
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('.group-dropdown')) {
-        document.querySelectorAll('.group-dropdown-content').forEach(dropdown => {
-          dropdown.classList.remove('show');
-        });
-      }
-    });
   }
 
   renderGroupDropdownItems(extId) {
