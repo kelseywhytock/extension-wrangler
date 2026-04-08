@@ -126,25 +126,139 @@ window.ExtWranglerShared = (() => {
   }
 
   async function loadExtensions(ctx) {
-    // stub — implemented in Task 4
+    try {
+      debugLog('🔄 Attempting to load extensions...');
+      let extensions = await chrome.management.getAll();
+
+      // Chrome Web Store fix: Retry if no extensions loaded or API returned empty/invalid result
+      if (!extensions || extensions.length === 0 || !Array.isArray(extensions)) {
+        debugLog('⚠️ Initial extension load failed or returned empty - retrying for Chrome Web Store compatibility...');
+
+        // Wait a bit for Chrome Web Store to fully initialize
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+
+        try {
+          extensions = await chrome.management.getAll();
+          debugLog('🔄 Retry attempt completed, got:', extensions ? extensions.length : 'null', 'extensions');
+        } catch (retryError) {
+          debugLog('❌ Retry attempt also failed:', retryError);
+          throw retryError;
+        }
+      }
+
+      // Reset extensions object
+      ctx.extensions = {};
+
+      // Process extensions with additional validation
+      if (extensions && Array.isArray(extensions)) {
+        extensions.forEach(ext => {
+          if (ext && ext.type === 'extension' && ext.id && ext.id !== chrome.runtime.id) {
+            ctx.extensions[ext.id] = ext;
+          }
+        });
+      }
+
+      const loadedCount = Object.keys(ctx.extensions).length;
+      debugLog(`✅ Loaded ${loadedCount} extensions`);
+
+      // Enhanced debugging for Chrome Web Store issues
+      debugLog(`[Web Store Debug] Extension loading details:`, {
+        rawExtensionsCount: extensions ? extensions.length : 'null',
+        filteredExtensionsCount: loadedCount,
+        extensionIds: Object.keys(ctx.extensions),
+        timestamp: new Date().toISOString()
+      });
+
+      // Cache extension names for future reference
+      await cacheExtensionNames(ctx);
+
+      // Verify we loaded extensions with more detailed warning
+      if (loadedCount === 0) {
+        debugLog('⚠️ WARNING: No extensions were loaded!');
+        debugLog('This could indicate:');
+        debugLog('- Chrome Web Store security restrictions');
+        debugLog('- Extension permissions not granted');
+        debugLog('- API timing issues');
+        debugLog('- Genuinely no other extensions installed');
+      }
+    } catch (error) {
+      debugLog('❌ Failed to load extensions:', error);
+
+      // Enhanced error logging for Chrome Web Store debugging
+      debugLog(`[Web Store Debug] Extension loading failed:`, {
+        error: error.message,
+        errorCode: error.code || 'unknown',
+        stack: error.stack,
+        timestamp: new Date().toISOString(),
+        userAgent: navigator.userAgent
+      });
+
+      // Set a flag to prevent cleanup
+      ctx.extensionLoadError = true;
+    }
   }
 
   async function cacheExtensionNames(ctx) {
-    // stub — implemented in Task 5
+    try {
+      const result = await chrome.storage.local.get(['extensionNameCache']);
+      const existingCache = result.extensionNameCache || {};
+      const updatedCache = { ...existingCache };
+      Object.values(ctx.extensions).forEach(ext => {
+        updatedCache[ext.id] = { name: ext.name, lastSeen: new Date().toISOString() };
+      });
+      const entries = Object.entries(updatedCache)
+        .sort((a, b) => new Date(b[1].lastSeen) - new Date(a[1].lastSeen))
+        .slice(0, NAME_CACHE_MAX_ENTRIES);
+      const trimmedCache = Object.fromEntries(entries);
+      await chrome.storage.local.set({ extensionNameCache: trimmedCache });
+    } catch (error) {
+      debugLog('Failed to cache extension names:', error);
+    }
   }
 
   // Renamed from getCachedRemovedExtensions — actually returns extensionNameCache
   // (a map of all extension names ever seen), not a list of removed extensions.
   async function getNameCache() {
-    // stub — implemented in Task 5
+    try {
+      const result = await chrome.storage.local.get(['extensionNameCache']);
+      return result.extensionNameCache || {};
+    } catch (error) {
+      console.error('Failed to get extension name cache:', error);
+      return {};
+    }
   }
 
   async function getCachedExtensionName(extensionId) {
-    // stub — implemented in Task 5
+    const cache = await getNameCache();
+    const cached = cache[extensionId];
+    return cached ? cached.name : extensionId.slice(0, 8) + '...';
   }
 
   async function trackRemovedExtensions(removedExtensions) {
-    // stub — implemented in Task 5
+    if (removedExtensions.length === 0) return;
+
+    try {
+      // Get existing removal history
+      const result = await chrome.storage.local.get(['removedExtensions']);
+      const existingRemovals = result.removedExtensions || [];
+
+      // Add new removals with timestamp
+      const newRemovals = removedExtensions.map(ext => ({
+        ...ext,
+        removedAt: new Date().toISOString(),
+        cleanedUp: true
+      }));
+
+      // Keep only last REMOVED_EXT_MAX removals to avoid storage bloat
+      const allRemovals = [...newRemovals, ...existingRemovals].slice(0, REMOVED_EXT_MAX);
+
+      // Save to storage
+      await chrome.storage.local.set({ removedExtensions: allRemovals });
+
+      debugLog('[Sync Fix] Tracked removed extensions:', newRemovals);
+    } catch (error) {
+      debugLog('Failed to track removed extensions:', error);
+    }
   }
 
   async function cleanupOrphanedExtensions(ctx, onNotify) {
@@ -152,7 +266,9 @@ window.ExtWranglerShared = (() => {
   }
 
   function getExtensionGroups(groups, extId) {
-    // stub — implemented in Task 5
+    return Object.values(groups)
+      .filter(g => g.extensions.includes(extId))
+      .map(g => g.name);
   }
 
   return {
