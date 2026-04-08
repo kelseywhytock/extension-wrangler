@@ -148,9 +148,18 @@ class ExtensionOrganizer {
         await this.saveData();
       }
 
-      // Initialize group order if empty
-      if (this.groupOrder.length === 0) {
-        this.groupOrder = Object.keys(this.groups);
+      // Initialize or repair group order
+      const allGroupIds = Object.keys(this.groups);
+      const missingFromOrder = allGroupIds.filter(id => !this.groupOrder.includes(id));
+      if (this.groupOrder.length === 0 || missingFromOrder.length > 0) {
+        if (missingFromOrder.length > 0) {
+          console.warn('[Sync Fix] groupOrder missing entries, repairing:', missingFromOrder);
+        }
+        const fixedId = allGroupIds.find(id => this.groups[id]?.isDefault);
+        const ordered = this.groupOrder.filter(id => allGroupIds.includes(id) && id !== fixedId);
+        missingFromOrder.filter(id => id !== fixedId).forEach(id => ordered.push(id));
+        if (fixedId) ordered.push(fixedId);
+        this.groupOrder = ordered;
         await this.saveGroupOrder();
       }
 
@@ -243,15 +252,8 @@ class ExtensionOrganizer {
 
   async saveData() {
     try {
-      await chrome.storage.sync.set({ groups: this.groups });
-
-      // Log successful save for Web Store debugging
-      console.log(`[Web Store Debug] Data saved successfully:`, {
-        groupsCount: Object.keys(this.groups).length,
-        totalExtensionsInGroups: Object.values(this.groups).reduce((sum, g) => sum + g.extensions.length, 0),
-        storageType: 'sync',
-        timestamp: new Date().toISOString()
-      });
+      await chrome.storage.sync.set({ groups: this.groups, groupOrder: this.groupOrder });
+      debugLog('[Sync] Data saved');
 
     } catch (error) {
       console.error('Failed to save data:', error);
@@ -271,14 +273,8 @@ class ExtensionOrganizer {
 
   async saveGroupOrder() {
     try {
-      await chrome.storage.sync.set({ groupOrder: this.groupOrder });
-
-      // Log successful save for Web Store debugging
-      console.log(`[Web Store Debug] Group order saved successfully:`, {
-        orderLength: this.groupOrder.length,
-        storageType: 'sync',
-        timestamp: new Date().toISOString()
-      });
+      await chrome.storage.sync.set({ groups: this.groups, groupOrder: this.groupOrder });
+      debugLog('[Sync] Data saved');
 
     } catch (error) {
       console.error('Failed to save group order:', error);
