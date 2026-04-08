@@ -81,7 +81,7 @@ class ExtensionWranglerSettings {
         if (fixedId) ordered.push(fixedId);
         this.groupOrder = ordered;
         await this.saveGroupOrder();
-        console.log('[Sync Fix] groupOrder repaired:', this.groupOrder);
+        if (_DEBUG) { console.log('[Sync Fix] groupOrder repaired:', this.groupOrder); }
       }
 
       // Clean up orphaned extensions after loading all data
@@ -748,19 +748,21 @@ class ExtensionWranglerSettings {
 
   async reorderGroups(draggedId, targetId) {
     // Enhanced debugging for drag and drop issues
-    console.log(`[Drag Debug] Attempting reorder:`, {
-      draggedId,
-      targetId,
-      draggedGroupExists: !!this.groups[draggedId],
-      targetGroupExists: !!this.groups[targetId],
-      draggedIsDefault: this.groups[draggedId]?.isDefault,
-      currentGroupOrder: this.groupOrder,
-      timestamp: new Date().toISOString()
-    });
+    if (_DEBUG) {
+      console.log(`[Drag Debug] Attempting reorder:`, {
+        draggedId,
+        targetId,
+        draggedGroupExists: !!this.groups[draggedId],
+        targetGroupExists: !!this.groups[targetId],
+        draggedIsDefault: this.groups[draggedId]?.isDefault,
+        currentGroupOrder: this.groupOrder,
+        timestamp: new Date().toISOString()
+      });
+    }
 
     // Don't allow dragging the Always On group
     if (this.groups[draggedId]?.isDefault) {
-      console.log('Cannot drag the Always On group');
+      if (_DEBUG) { console.log('Cannot drag the Always On group'); }
       return;
     }
 
@@ -792,12 +794,14 @@ class ExtensionWranglerSettings {
     }
 
     if (draggedId === targetId) {
-      console.log('[Drag Debug] Cannot drop group on itself');
+      if (_DEBUG) { console.log('[Drag Debug] Cannot drop group on itself'); }
       return;
     }
 
-    console.log(`[Drag Debug] Valid reorder operation: moving ${this.groups[draggedId]?.name} (${draggedId})`);
-    console.log('[Drag Debug] Current order before:', this.groupOrder);
+    if (_DEBUG) {
+      console.log(`[Drag Debug] Valid reorder operation: moving ${this.groups[draggedId]?.name} (${draggedId})`);
+      console.log('[Drag Debug] Current order before:', this.groupOrder);
+    }
 
     // Create a new array to avoid mutation issues
     let newOrder = [...this.groupOrder];
@@ -811,19 +815,19 @@ class ExtensionWranglerSettings {
     if (this.groups[targetId]?.isDefault) {
       // If dropping on Always On group, insert at the end (before Always On group)
       insertIndex = newOrder.length;
-      console.log('Dropping before Always On group at end');
+      if (_DEBUG) { console.log('Dropping before Always On group at end'); }
     } else {
       // Find the target's new position after removal and insert before it
       const targetIndex = newOrder.indexOf(targetId);
       insertIndex = targetIndex;
-      console.log(`Inserting before ${this.groups[targetId]?.name} at index ${insertIndex}`);
+      if (_DEBUG) { console.log(`Inserting before ${this.groups[targetId]?.name} at index ${insertIndex}`); }
     }
 
     // Insert dragged item at new position
     newOrder.splice(insertIndex, 0, draggedId);
 
     this.groupOrder = newOrder;
-    console.log('New group order after:', this.groupOrder);
+    if (_DEBUG) { console.log('New group order after:', this.groupOrder); }
 
     await this.saveGroupOrder();
     this.showNotification('Group order updated', 'success');
@@ -956,23 +960,25 @@ class ExtensionWranglerSettings {
     this.renderRemovedExtensionsHistory();
 
     // Debug: Check if drag handles are rendered
-    setTimeout(() => {
-      const dragHandles = document.querySelectorAll('.drag-handle');
-      const draggableCards = document.querySelectorAll('.group-card[draggable="true"]');
-      const allGroupCards = document.querySelectorAll('.group-card');
-      console.log(`🔍 Debug: Found ${dragHandles.length} drag handles, ${draggableCards.length} draggable cards, ${allGroupCards.length} total cards`);
+    if (_DEBUG) {
+      setTimeout(() => {
+        const dragHandles = document.querySelectorAll('.drag-handle');
+        const draggableCards = document.querySelectorAll('.group-card[draggable="true"]');
+        const allGroupCards = document.querySelectorAll('.group-card');
+        console.log(`🔍 Debug: Found ${dragHandles.length} drag handles, ${draggableCards.length} draggable cards, ${allGroupCards.length} total cards`);
 
-      // Check each card
-      allGroupCards.forEach((card, index) => {
-        const isDraggable = card.getAttribute('draggable') === 'true';
-        console.log(`  Card ${index}: draggable=${isDraggable}, classes=${card.className}`);
-      });
+        // Check each card
+        allGroupCards.forEach((card, index) => {
+          const isDraggable = card.getAttribute('draggable') === 'true';
+          console.log(`  Card ${index}: draggable=${isDraggable}, classes=${card.className}`);
+        });
 
-      // Basic drag functionality check
-      if (draggableCards.length > 0) {
-        console.log(`✅ ${draggableCards.length} groups ready for drag-and-drop`);
-      }
-    }, 200);
+        // Basic drag functionality check
+        if (draggableCards.length > 0) {
+          console.log(`✅ ${draggableCards.length} groups ready for drag-and-drop`);
+        }
+      }, 200);
+    }
   }
 
   renderGroups() {
