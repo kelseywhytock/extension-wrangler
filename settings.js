@@ -23,7 +23,7 @@ class ExtensionWranglerSettings {
       // Check if Chrome Sync is actually operational
       if (window.webStoreUtils) {
         const syncStatus = await window.webStoreUtils.checkSyncStatus();
-        this.updateSyncStatusCard(syncStatus.operational);
+        await this.updateSyncStatusCard(syncStatus.operational);
         if (!syncStatus.operational) {
           this.showSyncWarning();
         }
@@ -860,24 +860,82 @@ class ExtensionWranglerSettings {
     }
   }
 
-  updateSyncStatusCard(operational) {
+  async updateSyncStatusCard(operational) {
     const card = document.getElementById('syncStatusCard');
     const title = document.getElementById('syncStatusTitle');
     const body = document.getElementById('syncStatusBody');
     if (!card || !title || !body) return;
 
     if (operational) {
+      // Get real usage data to show something honest and useful
+      const groupCount = Object.keys(this.groups).length;
+      const quotaInfo = window.webStoreUtils
+        ? await window.webStoreUtils.checkSyncStorageQuota()
+        : null;
+      const kbUsed = quotaInfo ? (quotaInfo.usage / 1024).toFixed(1) : null;
+      const kbMax = quotaInfo ? (quotaInfo.maxBytes / 1024).toFixed(0) : null;
+
       card.style.background = '#e0ecee';
       card.style.borderColor = '#0b3c49';
       title.style.color = '#0b3c49';
-      title.textContent = 'Your groups sync across devices!';
-      body.textContent = 'Settings are automatically synchronized with your Chrome profile and available on all your devices.';
+      title.textContent = 'Sync storage is active';
+
+      // Build body with factual stats + honest caveat
+      body.innerHTML = '';
+
+      const stats = document.createElement('div');
+      stats.style.cssText = 'margin-bottom:6px;';
+      stats.textContent = kbUsed !== null
+        ? `${groupCount} group${groupCount !== 1 ? 's' : ''} · ${kbUsed} KB of ${kbMax} KB used`
+        : `${groupCount} group${groupCount !== 1 ? 's' : ''} saved to sync storage`;
+      body.appendChild(stats);
+
+      const caveat = document.createElement('div');
+      caveat.style.cssText = 'font-size:11px;color:#4a5a5e;';
+      const verifyLink = document.createElement('a');
+      verifyLink.href = '#';
+      verifyLink.style.color = '#0b3c49';
+      verifyLink.textContent = 'Verify sync is enabled';
+      verifyLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        chrome.tabs.create({ url: 'chrome://settings/syncSetup' });
+      });
+      caveat.appendChild(document.createTextNode('Data is written to Chrome\'s sync storage. '));
+      caveat.appendChild(verifyLink);
+      caveat.appendChild(document.createTextNode(' to confirm it reaches your other devices.'));
+      body.appendChild(caveat);
+
+      if (quotaInfo?.isNearQuota) {
+        const warning = document.createElement('div');
+        warning.style.cssText = 'margin-top:6px;font-size:11px;color:#731963;font-weight:500;';
+        warning.textContent = `⚠ Storage ${quotaInfo.usagePercentage}% full — consider removing unused groups.`;
+        body.appendChild(warning);
+      }
     } else {
       card.style.background = '#f5edf2';
       card.style.borderColor = '#731963';
       title.style.color = '#731963';
-      title.textContent = 'Sync is currently unavailable';
-      body.textContent = 'Sign into Chrome with the same Google account on all devices and enable Sync > Extensions to sync your groups.';
+      title.textContent = 'Sync storage unavailable';
+
+      body.innerHTML = '';
+      const msg = document.createElement('div');
+      msg.style.cssText = 'margin-bottom:6px;';
+      msg.textContent = 'Your groups are saved locally on this device only.';
+      body.appendChild(msg);
+
+      const fix = document.createElement('div');
+      fix.style.cssText = 'font-size:11px;color:#4a5a5e;';
+      const fixLink = document.createElement('a');
+      fixLink.href = '#';
+      fixLink.style.color = '#731963';
+      fixLink.textContent = 'Enable Chrome Sync';
+      fixLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        chrome.tabs.create({ url: 'chrome://settings/syncSetup' });
+      });
+      fix.appendChild(fixLink);
+      fix.appendChild(document.createTextNode(' and sign in with the same Google account on all devices.'));
+      body.appendChild(fix);
     }
   }
 

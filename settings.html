@@ -13,7 +13,7 @@
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-      background: #f2f5f4;
+      background: #f0f4f3;
       color: #0d1f24;
       line-height: 1.6;
     }
@@ -101,12 +101,12 @@
     }
 
     .btn-secondary {
-      background: #cbd2d0;
+      background: #c4cece;
       color: #4a5a5e;
     }
 
     .btn-secondary:hover {
-      background: #cbd2d0;
+      background: #b0bebe;
     }
 
     .btn-danger {
@@ -133,8 +133,8 @@
     }
 
     .group-card {
-      background: #f2f5f4;
-      border: 1px solid #cbd2d0;
+      background: #f0f4f3;
+      border: 1px solid #c4cece;
       border-radius: 8px;
       padding: 24px;
       margin-bottom: 24px;
@@ -246,11 +246,11 @@
     }
 
     .group-toggle.disabled {
-      background: #cbd2d0;
+      background: #c4cece;
     }
 
     .group-toggle.mixed {
-      background: #7a9298;
+      background: #2a7d8e;
     }
 
     .group-toggle::after {
@@ -298,7 +298,7 @@
     }
 
     .stat-enabled {
-      background: #0b3c49;
+      background: #2a7d8e;
     }
 
     .stat-disabled {
@@ -317,7 +317,7 @@
 
     .extension-card {
       background: #fffdfd;
-      border: 1px solid #cbd2d0;
+      border: 1px solid #c4cece;
       border-radius: 8px;
       padding: 12px 16px;
       transition: all 0.2s;
@@ -366,7 +366,7 @@
     }
 
     .extension-toggle.disabled {
-      background: #cbd2d0;
+      background: #c4cece;
     }
 
     .extension-toggle::after {
@@ -396,7 +396,7 @@
     .search-input {
       width: 100%;
       padding: 12px 16px;
-      border: 1px solid #cbd2d0;
+      border: 1px solid #c4cece;
       border-radius: 8px;
       font-size: 16px;
       margin-bottom: 24px;
@@ -454,24 +454,24 @@
       padding: 32px;
       border-radius: 12px;
       width: 600px;
-      max-width: 90vw;
-      max-height: 80vh;
+      max-width: 92vw;
+      max-height: 85vh;
       overflow-y: auto;
     }
 
     .modal-header {
       font-size: 24px;
       font-weight: 600;
-      margin-bottom: 24px;
+      margin-bottom: 5px;
     }
 
     .modal-input {
       width: 100%;
       padding: 12px 16px;
-      border: 1px solid #cbd2d0;
+      border: 1px solid #c4cece;
       border-radius: 8px;
-      font-size: 16px;
-      margin-bottom: 24px;
+      font-size: 14px;
+      margin-bottom: 5px;
     }
 
     .modal-input:focus {
@@ -488,9 +488,9 @@
     }
 
     .checkbox-list {
-      max-height: 400px;
+      max-height: 350px;
       overflow-y: auto;
-      border: 1px solid #cbd2d0;
+      border: 1px solid #c4cece;
       border-radius: 8px;
       padding: 0 16px;
     }
@@ -547,7 +547,7 @@
 
     .tabs {
       display: flex;
-      border-bottom: 2px solid #cbd2d0;
+      border-bottom: 2px solid #c4cece;
       margin-bottom: 32px;
     }
 
@@ -564,11 +564,11 @@
     .tab.active {
       border-bottom-color: #0b3c49;
       color: #0b3c49;
-      background: #f2f5f4;
+      background: #f0f4f3;
     }
 
     .tab:hover:not(.active) {
-      background: #f2f5f4;
+      background: #f0f4f3;
       color: #0d1f24;
     }
 
@@ -614,7 +614,7 @@
       top: 100%;
       left: 0;
       margin-top: 4px;
-      border: 1px solid #cbd2d0;
+      border: 1px solid #c4cece;
       max-height: 200px;
       overflow-y: auto;
     }
@@ -636,7 +636,7 @@
     }
 
     .group-dropdown-item:hover {
-      background: #f2f5f4;
+      background: #f0f4f3;
     }
 
     .hidden {
@@ -762,7 +762,7 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0b3c49" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
           Chrome Profile Sync
         </div>
-        <div id="syncStatusCard" style="background: #f2f5f4; border: 1px solid #cbd2d0; border-radius: 8px; padding: 16px; margin-bottom: 24px; font-size: 12px;">
+        <div id="syncStatusCard" style="background: #f0f4f3; border: 1px solid #c4cece; border-radius: 8px; padding: 16px; margin-bottom: 24px; font-size: 12px;">
           <div id="syncStatusTitle" style="font-weight: 600; margin-bottom: 8px; color: #4a5a5e;">Checking sync status...</div>
           <div id="syncStatusBody" style="color: #4a5a5e;">Verifying connection to Chrome Sync.</div>
         </div>
@@ -787,8 +787,8 @@
         <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px;">
           <button class="btn btn-success btn-small" id="enableAllBtn">Enable All Extensions</button>
           <button class="btn btn-danger btn-small" id="disableAllBtn">Disable All Extensions</button>
-          <button class="btn btn-secondary btn-small" id="exportBtn" title="Save your groups as a JSON file you can restore later">Export Groups</button>
-          <button class="btn btn-secondary btn-small" id="importBtn" title="Load groups from a previously exported JSON file — this will replace your current groups">Import Groups</button>
+          <button class="btn btn-secondary btn-small" id="exportBtn" title="Save your groups as a JSON file you can restore later">Export Groups Settings</button>
+          <button class="btn btn-secondary btn-small" id="importBtn" title="Load groups from a previously exported JSON file — this will replace your current groups">Import Groups Settings</button>
         </div>
 
         <div class="section-subtitle" style="margin-top: 24px; display:flex; align-items:center; gap:8px;">
@@ -796,11 +796,11 @@
           Tips
         </div>
         <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px;">
-          <div style="background: #f2f5f4; border: 1px solid #cbd2d0; border-radius: 8px; padding: 12px 14px; font-size: 13px; color: #4a5a5e; display: flex; gap: 10px; align-items: flex-start;">
+          <div style="background: #f0f4f3; border: 1px solid #c4cece; border-radius: 8px; padding: 12px 14px; font-size: 13px; color: #4a5a5e; display: flex; gap: 10px; align-items: flex-start;">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7a9298" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><polyline points="17 11 12 6 7 11"/><polyline points="17 18 12 13 7 18"/></svg>
             <span>Drag the <strong style="color: #0b3c49;">⠿</strong> handle on any group to reorder it. The Always On group always stays at the bottom.</span>
           </div>
-          <div style="background: #f2f5f4; border: 1px solid #cbd2d0; border-radius: 8px; padding: 12px 14px; font-size: 13px; color: #4a5a5e; display: flex; gap: 10px; align-items: flex-start;">
+          <div style="background: #f0f4f3; border: 1px solid #c4cece; border-radius: 8px; padding: 12px 14px; font-size: 13px; color: #4a5a5e; display: flex; gap: 10px; align-items: flex-start;">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#731963" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
             <span>Add extensions to the <strong style="color: #731963;">Always On</strong> group to prevent them from ever being disabled.</span>
           </div>
@@ -827,7 +827,7 @@
       <label for="groupNameInput" style="display: block; font-size: 13px; font-weight: 500; color: #0b3c49; margin-bottom: 6px;">Group name</label>
       <input type="text" class="modal-input" id="groupNameInput" placeholder="e.g. Design Tools, Work, Gaming">
 
-      <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
+      <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 15px; margin-bottom: 2px;">
         <div class="section-subtitle" style="margin-bottom: 0;">Select Extensions</div>
         <span id="selectionCount" style="font-size: 12px; color: #4a5a5e;"></span>
       </div>
