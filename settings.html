@@ -13,8 +13,8 @@
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-      background: #f8f9fa;
-      color: #1a1a1a;
+      background: #f2f5f4;
+      color: #0d1f24;
       line-height: 1.6;
     }
 
@@ -24,6 +24,7 @@
       padding: 32px 24px;
     }
 
+
     .header {
       margin-bottom: 30px;
     }
@@ -31,13 +32,13 @@
     .header h1 {
       font-size: 32px;
       font-weight: 600;
-      color: #1a1a1a;
+      color: #0d1f24;
       margin-bottom: 8px;
     }
 
     .header p {
       font-size: 16px;
-      color: #5f6368;
+      color: #4a5a5e;
     }
 
     .main-content {
@@ -48,17 +49,17 @@
     }
 
     .groups-section {
-      background: white;
+      background: #fffdfd;
       border-radius: 12px;
       padding: 32px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 8px rgba(11,60,73,0.08);
     }
 
     .sidebar {
-      background: white;
+      background: #fffdfd;
       border-radius: 12px;
       padding: 32px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 8px rgba(11,60,73,0.08);
       position: sticky;
       top: 32px;
     }
@@ -67,14 +68,14 @@
       font-size: 24px;
       font-weight: 600;
       margin-bottom: 24px;
-      color: #1a1a1a;
+      color: #0d1f24;
     }
 
     .section-subtitle {
       font-size: 18px;
       font-weight: 500;
-      margin-bottom: 16px;
-      color: #1a1a1a;
+      margin-bottom: 12px;
+      color: #0d1f24;
     }
 
     .btn {
@@ -91,21 +92,21 @@
     }
 
     .btn-primary {
-      background: #4285f4;
+      background: #0b3c49;
       color: white;
     }
 
     .btn-primary:hover {
-      background: #3367d6;
+      background: #0d4d5e;
     }
 
     .btn-secondary {
-      background: #e8eaed;
-      color: #5f6368;
+      background: #cbd2d0;
+      color: #4a5a5e;
     }
 
     .btn-secondary:hover {
-      background: #dadce0;
+      background: #cbd2d0;
     }
 
     .btn-danger {
@@ -118,12 +119,12 @@
     }
 
     .btn-success {
-      background: #34a853;
+      background: #0b3c49;
       color: white;
     }
 
     .btn-success:hover {
-      background: #2d9348;
+      background: #0d4d5e;
     }
 
     .btn-small {
@@ -132,8 +133,8 @@
     }
 
     .group-card {
-      background: #f8f9fa;
-      border: 1px solid #e8eaed;
+      background: #f2f5f4;
+      border: 1px solid #cbd2d0;
       border-radius: 8px;
       padding: 24px;
       margin-bottom: 24px;
@@ -154,12 +155,12 @@
     }
 
     .group-card.drag-over {
-      border-color: #4285f4;
-      background: #e8f0fe;
+      border-color: #0b3c49;
+      background: #e0ecee;
     }
 
     .group-card:hover {
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 12px rgba(11,60,73,0.08);
     }
 
     .group-header {
@@ -175,13 +176,13 @@
     }
 
     .group-header:hover {
-      background-color: rgba(0, 0, 0, 0.04);
+      background-color: rgba(11,60,73,0.05);
     }
 
     .drag-handle {
       width: 16px;
       height: 16px;
-      color: #9aa0a6;
+      color: #7a9298;
       flex-shrink: 0;
       margin-right: 4px;
       cursor: grab;
@@ -189,7 +190,7 @@
     }
 
     .group-card[draggable="true"]:hover .drag-handle {
-      color: #3c4043;
+      color: #0b3c49;
     }
 
     .group-expand-icon {
@@ -197,7 +198,7 @@
       height: 20px;
       flex-shrink: 0;
       transition: transform 0.2s;
-      color: #5f6368;
+      color: #4a5a5e;
     }
 
     .group-expand-icon.expanded {
@@ -207,7 +208,7 @@
     .group-name {
       font-size: 20px;
       font-weight: 600;
-      color: #1a1a1a;
+      color: #0d1f24;
       flex: 1;
       display: flex;
       align-items: center;
@@ -241,15 +242,15 @@
     }
 
     .group-toggle.enabled {
-      background: #4285f4;
+      background: #731963;
     }
 
     .group-toggle.disabled {
-      background: #dadce0;
+      background: #cbd2d0;
     }
 
     .group-toggle.mixed {
-      background: #fbbc04;
+      background: #f0e100;
     }
 
     .group-toggle::after {
@@ -259,10 +260,10 @@
       left: 2px;
       width: 20px;
       height: 20px;
-      background: white;
+      background: #fffdfd;
       border-radius: 50%;
       transition: all 0.2s;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      box-shadow: 0 2px 4px rgba(11,60,73,0.15);
     }
 
     .group-toggle.enabled::after {
@@ -284,7 +285,7 @@
       align-items: center;
       gap: 8px;
       padding: 8px 16px;
-      background: white;
+      background: #fffdfd;
       border-radius: 20px;
       font-size: 10px;
       font-weight: 500;
@@ -297,7 +298,7 @@
     }
 
     .stat-enabled {
-      background: #34a853;
+      background: #0b3c49;
     }
 
     .stat-disabled {
@@ -305,7 +306,7 @@
     }
 
     .stat-total {
-      background: #4285f4;
+      background: #0b3c49;
     }
 
     .extensions-grid {
@@ -315,8 +316,8 @@
     }
 
     .extension-card {
-      background: white;
-      border: 1px solid #e8eaed;
+      background: #fffdfd;
+      border: 1px solid #cbd2d0;
       border-radius: 8px;
       padding: 12px 16px;
       transition: all 0.2s;
@@ -326,7 +327,7 @@
     }
 
     .extension-card:hover {
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 8px rgba(11,60,73,0.08);
     }
 
     .extension-header {
@@ -345,7 +346,7 @@
 
     .extension-name {
       font-weight: 500;
-      color: #1a1a1a;
+      color: #0d1f24;
       font-size: 14px;
     }
 
@@ -361,11 +362,11 @@
     }
 
     .extension-toggle.enabled {
-      background: #4285f4;
+      background: #731963;
     }
 
     .extension-toggle.disabled {
-      background: #dadce0;
+      background: #cbd2d0;
     }
 
     .extension-toggle::after {
@@ -375,7 +376,7 @@
       left: 2px;
       width: 16px;
       height: 16px;
-      background: white;
+      background: #fffdfd;
       border-radius: 50%;
       transition: all 0.2s;
     }
@@ -386,7 +387,7 @@
 
     .extension-groups {
       font-size: 12px;
-      color: #5f6368;
+      color: #4a5a5e;
       display: flex;
       align-items: center;
       gap: 4px;
@@ -395,7 +396,7 @@
     .search-input {
       width: 100%;
       padding: 12px 16px;
-      border: 1px solid #dadce0;
+      border: 1px solid #cbd2d0;
       border-radius: 8px;
       font-size: 16px;
       margin-bottom: 24px;
@@ -403,12 +404,12 @@
 
     .search-input:focus {
       outline: none;
-      border-color: #4285f4;
-      box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+      border-color: #0b3c49;
+      box-shadow: 0 0 0 2px rgba(11,60,73,0.2);
     }
 
     .always-on-badge {
-      background: #34a853;
+      background: #731963;
       color: white;
       padding: 4px 8px;
       border-radius: 4px;
@@ -420,7 +421,7 @@
     .empty-state {
       text-align: center;
       padding: 64px 32px;
-      color: #5f6368;
+      color: #4a5a5e;
     }
 
     .empty-state h3 {
@@ -440,7 +441,7 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0,0,0,0.5);
+      background: rgba(11,60,73,0.5);
       z-index: 1000;
     }
 
@@ -449,7 +450,7 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      background: white;
+      background: #fffdfd;
       padding: 32px;
       border-radius: 12px;
       width: 600px;
@@ -467,7 +468,7 @@
     .modal-input {
       width: 100%;
       padding: 12px 16px;
-      border: 1px solid #dadce0;
+      border: 1px solid #cbd2d0;
       border-radius: 8px;
       font-size: 16px;
       margin-bottom: 24px;
@@ -475,8 +476,8 @@
 
     .modal-input:focus {
       outline: none;
-      border-color: #4285f4;
-      box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+      border-color: #0b3c49;
+      box-shadow: 0 0 0 2px rgba(11,60,73,0.2);
     }
 
     .modal-actions {
@@ -489,7 +490,7 @@
     .checkbox-list {
       max-height: 400px;
       overflow-y: auto;
-      border: 1px solid #e8eaed;
+      border: 1px solid #cbd2d0;
       border-radius: 8px;
       padding: 16px;
     }
@@ -499,7 +500,7 @@
       align-items: center;
       gap: 12px;
       padding: 12px 0;
-      border-bottom: 1px solid #f0f0f0;
+      border-bottom: 1px solid #e2e8e6;
     }
 
     .checkbox-item:last-child {
@@ -509,7 +510,7 @@
     .checkbox {
       width: 20px;
       height: 20px;
-      accent-color: #4285f4;
+      accent-color: #731963;
     }
 
     .checkbox-label {
@@ -531,22 +532,22 @@
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: #4285f4;
+      background: #0b3c49;
       flex-shrink: 0;
     }
 
     .group-dot.always-enabled {
-      background: #34a853;
+      background: #731963;
     }
 
     .group-text {
       font-size: 12px;
-      color: #5f6368;
+      color: #4a5a5e;
     }
 
     .tabs {
       display: flex;
-      border-bottom: 2px solid #e8eaed;
+      border-bottom: 2px solid #cbd2d0;
       margin-bottom: 32px;
     }
 
@@ -557,18 +558,18 @@
       transition: all 0.2s;
       font-weight: 600;
       font-size: 16px;
-      color: #5f6368;
+      color: #4a5a5e;
     }
 
     .tab.active {
-      border-bottom-color: #4285f4;
-      color: #4285f4;
-      background: #f8f9fa;
+      border-bottom-color: #731963;
+      color: #731963;
+      background: #f2f5f4;
     }
 
     .tab:hover:not(.active) {
-      background: #f8f9fa;
-      color: #1a1a1a;
+      background: #f2f5f4;
+      color: #0d1f24;
     }
 
     .extension-icon {
@@ -588,7 +589,7 @@
       padding: 4px 10px;
       font-size: 11px;
       border-radius: 4px;
-      background: #4285f4;
+      background: #0b3c49;
       color: white;
       border: none;
       cursor: pointer;
@@ -599,21 +600,21 @@
     }
 
     .group-dropdown-button:hover {
-      background: #3367d6;
+      background: #0d4d5e;
     }
 
     .group-dropdown-content {
       display: none;
       position: absolute;
-      background: white;
+      background: #fffdfd;
       min-width: 200px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      box-shadow: 0 4px 12px rgba(11,60,73,0.12);
       border-radius: 8px;
       z-index: 1000;
       top: 100%;
       left: 0;
       margin-top: 4px;
-      border: 1px solid #e8eaed;
+      border: 1px solid #cbd2d0;
       max-height: 200px;
       overflow-y: auto;
     }
@@ -625,7 +626,7 @@
     .group-dropdown-item {
       padding: 12px 16px;
       cursor: pointer;
-      border-bottom: 1px solid #f0f0f0;
+      border-bottom: 1px solid #e2e8e6;
       font-size: 14px;
       transition: background 0.2s;
     }
@@ -635,7 +636,7 @@
     }
 
     .group-dropdown-item:hover {
-      background: #f8f9fa;
+      background: #f2f5f4;
     }
 
     .hidden {
@@ -646,6 +647,10 @@
       display: flex;
       gap: 16px;
       margin-bottom: 24px;
+    }
+
+    #extensionSummary {
+      margin-bottom: 16px;
     }
 
     .notification {
@@ -668,7 +673,7 @@
     }
 
     .notification.success {
-      background: #34a853;
+      background: #0b3c49;
     }
 
     .notification.error {
@@ -677,11 +682,11 @@
 
     .notification.warning {
       background: #fbbc04;
-      color: #1a1a1a;
+      color: #0d1f24;
     }
 
     .notification.info {
-      background: #4285f4;
+      background: #0b3c49;
     }
 
     @media (max-width: 768px) {
@@ -754,9 +759,9 @@
 
       <div class="sidebar">
         <div class="section-subtitle">✨ Chrome Profile Sync</div>
-        <div id="syncStatusCard" style="background: #f8f9fa; border: 1px solid #e8eaed; border-radius: 8px; padding: 16px; margin-bottom: 24px; font-size: 14px;">
-          <div id="syncStatusTitle" style="font-weight: 600; margin-bottom: 8px; color: #5f6368;">Checking sync status...</div>
-          <div id="syncStatusBody" style="color: #5f6368;">Verifying connection to Chrome Sync.</div>
+        <div id="syncStatusCard" style="background: #f2f5f4; border: 1px solid #cbd2d0; border-radius: 8px; padding: 16px; margin-bottom: 24px; font-size: 12px;">
+          <div id="syncStatusTitle" style="font-weight: 600; margin-bottom: 8px; color: #4a5a5e;">Checking sync status...</div>
+          <div id="syncStatusBody" style="color: #4a5a5e;">Verifying connection to Chrome Sync.</div>
         </div>
 
         <div class="section-subtitle">Extension Summary</div>
@@ -785,18 +790,18 @@
 
         <div class="section-subtitle" style="margin-top: 24px;">💡 Tips</div>
         <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px;">
-          <div style="background: #f8f9fa; border: 1px solid #e8eaed; border-radius: 8px; padding: 12px 14px; font-size: 13px; color: #5f6368; display: flex; gap: 10px; align-items: flex-start;">
+          <div style="background: #f2f5f4; border: 1px solid #cbd2d0; border-radius: 8px; padding: 12px 14px; font-size: 13px; color: #4a5a5e; display: flex; gap: 10px; align-items: flex-start;">
             <span style="font-size: 15px; line-height: 1.3; flex-shrink: 0;">↕</span>
-            <span>Drag the <strong style="color: #3c4043;">⠿</strong> handle on any group to reorder it. The Always On group always stays at the bottom.</span>
+            <span>Drag the <strong style="color: #0b3c49;">⠿</strong> handle on any group to reorder it. The Fixed / Always On group always stays at the bottom.</span>
           </div>
-          <div style="background: #f8f9fa; border: 1px solid #e8eaed; border-radius: 8px; padding: 12px 14px; font-size: 13px; color: #5f6368; display: flex; gap: 10px; align-items: flex-start;">
+          <div style="background: #f2f5f4; border: 1px solid #cbd2d0; border-radius: 8px; padding: 12px 14px; font-size: 13px; color: #4a5a5e; display: flex; gap: 10px; align-items: flex-start;">
             <span style="font-size: 15px; line-height: 1.3; flex-shrink: 0;">🔒</span>
-            <span>Add extensions to the <strong style="color: #3c4043;">Always On</strong> group to prevent them from ever being disabled.</span>
+            <span>Add extensions to the <strong style="color: #0b3c49;">Fixed / Always On</strong> group to prevent them from ever being disabled.</span>
           </div>
         </div>
 
-        <div class="section-subtitle">🗑️ Auto-removed Extensions</div>
-        <div style="font-size: 12px; color: #5f6368; margin-bottom: 10px;">Extensions automatically removed from groups after being uninstalled.</div>
+        <div class="section-subtitle">🗑️ Uninstalled Extensions</div>
+        <div style="font-size: 12px; color: #4a5a5e; margin-bottom: 10px;">Extensions automatically removed from groups after being uninstalled.</div>
         <div id="removedExtensionsSection" style="font-size: 14px;">
           <div id="removedExtensionsList" style="max-height: 200px; overflow-y: auto;"></div>
           <button class="btn btn-secondary btn-small" id="clearHistoryBtn" style="margin-top: 12px; width: 100%;">Clear History</button>
@@ -810,16 +815,16 @@
     <div class="modal-content">
       <div class="modal-header" id="modalTitle">Create New Group</div>
 
-      <label for="groupNameInput" style="display: block; font-size: 13px; font-weight: 500; color: #3c4043; margin-bottom: 6px;">Group name</label>
+      <label for="groupNameInput" style="display: block; font-size: 13px; font-weight: 500; color: #0b3c49; margin-bottom: 6px;">Group name</label>
       <input type="text" class="modal-input" id="groupNameInput" placeholder="e.g. Design Tools, Work, Gaming">
 
       <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
         <div class="section-subtitle" style="margin-bottom: 0;">Select Extensions</div>
-        <span id="selectionCount" style="font-size: 12px; color: #5f6368;"></span>
+        <span id="selectionCount" style="font-size: 12px; color: #4a5a5e;"></span>
       </div>
       <input type="text" class="modal-input" id="modalExtensionSearchInput" placeholder="Search extensions...">
       <div class="checkbox-list" id="extensionsList"></div>
-      <div id="extensionsEmptySearch" style="display: none; padding: 24px; text-align: center; color: #5f6368; font-size: 14px;">No extensions match your search.</div>
+      <div id="extensionsEmptySearch" style="display: none; padding: 24px; text-align: center; color: #4a5a5e; font-size: 14px;">No extensions match your search.</div>
 
       <div class="modal-actions">
         <button class="btn btn-danger" id="deleteGroupBtn" style="display: none; margin-right: auto;">Delete Group</button>
