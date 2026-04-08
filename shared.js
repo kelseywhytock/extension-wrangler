@@ -262,7 +262,71 @@ window.ExtWranglerShared = (() => {
   }
 
   async function cleanupOrphanedExtensions(ctx, onNotify) {
-    // stub — implemented in Task 6
+    // Don't run cleanup if there was an error loading extensions
+    if (ctx.extensionLoadError) {
+      console.warn('⚠️ Skipping cleanup due to extension load error');
+      return;
+    }
+
+    let hasChanges = false;
+    const validExtensionIds = new Set(Object.keys(ctx.extensions));
+    const removedExtensions = [];
+
+    // Safety check - if no extensions loaded, don't clean up
+    if (validExtensionIds.size === 0) {
+      console.warn('⚠️ No extensions loaded - skipping cleanup to prevent data loss');
+      return;
+    }
+
+    debugLog(`🧹 Checking for orphaned extensions (${validExtensionIds.size} valid extensions found)...`);
+
+    // Single fetch of name cache before the loop — avoids N sequential storage reads (bug #13)
+    const nameCache = await getNameCache();
+
+    // Check each group for orphaned extensions
+    for (const [, group] of Object.entries(ctx.groups)) {
+      const originalLength = group.extensions.length;
+      const beforeExtensions = [...group.extensions];
+
+      // Filter out extensions that no longer exist and track what we're removing
+      const extensionsToKeep = [];
+      for (const extId of group.extensions) {
+        const exists = validExtensionIds.has(extId);
+        if (exists) {
+          extensionsToKeep.push(extId);
+        } else {
+          // Get the extension name from the pre-fetched cache or fall back to truncated ID
+          const extensionName = nameCache[extId]?.name ?? extId.slice(0, 8) + '...';
+          removedExtensions.push({
+            id: extId,
+            name: extensionName,
+            groupName: group.name
+          });
+          debugLog(`Removing orphaned extension ${extensionName} (${extId}) from group "${group.name}"`);
+        }
+      }
+      group.extensions = extensionsToKeep;
+
+      if (group.extensions.length !== originalLength) {
+        hasChanges = true;
+        const removed = beforeExtensions.filter(id => !group.extensions.includes(id));
+        debugLog(`Cleaned ${removed.length} orphaned extension(s) from group "${group.name}"`);
+      }
+    }
+
+    // Save changes and notify user if any orphaned extensions were removed
+    if (hasChanges) {
+      await ctx.saveData();
+      await trackRemovedExtensions(removedExtensions);
+      debugLog('✅ Orphaned extensions cleanup complete');
+
+      // Invoke caller-supplied notification callback
+      if (removedExtensions.length > 0) {
+        if (onNotify) onNotify(removedExtensions);
+      }
+    } else {
+      debugLog('✅ No orphaned extensions found');
+    }
   }
 
   function getExtensionGroups(groups, extId) {
