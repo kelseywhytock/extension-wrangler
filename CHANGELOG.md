@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - Task 3: Fix migration bugs from code quality review
+
+### Fixed - Three migration correctness issues in `popup.js` and `settings.js`
+
+#### Bug 1: `deviceDataMigrated` stored in sync instead of local storage
+`deviceDataMigrated` is a per-device flag that records whether this device has run the one-time cleanup of stale sync keys. It was incorrectly stored in `chrome.storage.sync`, meaning once device A ran cleanup and set the flag, device B would receive the flag via sync before running its own cleanup — permanently skipping the cleanup on device B.
+- **`popup.js`** — `migrateFromLocalStorage()`: Changed `chrome.storage.sync.get(['deviceDataMigrated'])` to `chrome.storage.local.get` and `chrome.storage.sync.set({ deviceDataMigrated: true })` to `chrome.storage.local.set`
+- **`settings.js`** — `migrateFromLocalStorage()`: Same changes as `popup.js`
+
+#### Bug 2: `local.remove(['groups', 'groupOrder'])` in the "sync wins" branch
+When sync already had groups data, the code immediately deleted the local copy. This was unsafe: `chrome.storage.sync.get()` returns the local sync mirror which may be stale or offline. If a user had newer data in local storage from working offline, this would permanently destroy it. `loadData()` already reads sync first, so the local copy is a harmless safety backup.
+- **`popup.js`** — `migrateFromLocalStorage()`: Removed `await chrome.storage.local.remove(['groups', 'groupOrder'])` from the `hasSyncData` branch; updated log message
+- **`settings.js`** — `migrateFromLocalStorage()`: Same change as `popup.js`
+
+#### Bug 3: Legacy `migrationCompleted` key never removed from sync storage
+The `migrationCompleted` flag was removed from the migration logic but existing users with `migrationCompleted: true` in their sync storage carried it forever, wasting sync quota. Added cleanup inside the `deviceDataMigrated` guard block so it is removed once per device on first run.
+- **`popup.js`** — `migrateFromLocalStorage()`: Added `migrationCompleted` removal block before `chrome.storage.local.set({ deviceDataMigrated: true })`
+- **`settings.js`** — `migrateFromLocalStorage()`: Same addition as `popup.js`
+
+#### Affected Files
+- `popup.js` (Task 3 changes — lines 58, 90–97, 113–118)
+- `settings.js` (Task 3 changes — lines 36, 68–75, 91–96)
+
+---
+
 ## [Unreleased] - Task 2: Move removedExtensions and failedToggles to local storage
 
 ### Fixed - Sync Quota: Move Device-Specific Debug Data to Local Storage

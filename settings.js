@@ -33,7 +33,7 @@ class ExtensionWranglerSettings {
     try {
       // --- One-time cleanup: move device-local keys out of sync storage ---
       // This runs independently of the original migration (which may already be complete).
-      const deviceMigration = await chrome.storage.sync.get(['deviceDataMigrated']);
+      const deviceMigration = await chrome.storage.local.get(['deviceDataMigrated']);
       if (!deviceMigration.deviceDataMigrated) {
         // Move extensionNameCache: sync → local
         const staleCache = await chrome.storage.sync.get(['extensionNameCache']);
@@ -64,8 +64,15 @@ class ExtensionWranglerSettings {
           console.log('[Sync Fix] Moved failedToggles from sync to local storage');
         }
 
+        // Also clean up legacy migrationCompleted flag
+        const legacyFlag = await chrome.storage.sync.get(['migrationCompleted']);
+        if (legacyFlag.migrationCompleted !== undefined) {
+          await chrome.storage.sync.remove(['migrationCompleted']);
+          console.log('[Sync Fix] Removed legacy migrationCompleted flag from sync storage');
+        }
+
         // Mark device data migration complete
-        await chrome.storage.sync.set({ deviceDataMigrated: true });
+        await chrome.storage.local.set({ deviceDataMigrated: true });
         console.log('[Sync Fix] Device data migration complete');
       }
       // --- End device-local key cleanup ---
@@ -89,9 +96,8 @@ class ExtensionWranglerSettings {
       const hasSyncData = syncResult.groups && Object.keys(syncResult.groups).length > 0;
 
       if (hasSyncData) {
-        // Sync wins — discard the stale local copy.
-        await chrome.storage.local.remove(['groups', 'groupOrder']);
-        console.log('[Sync Fix] Sync has data — cleared stale local copy of groups');
+        // Sync wins — local copy is a harmless safety backup; loadData() reads sync first.
+        console.log('[Sync Fix] Sync has data — local copy retained as safety backup');
         return;
       }
 
