@@ -1,3 +1,5 @@
+const _DEBUG = window.ExtWranglerShared?.DEBUG ?? false;
+
 class ExtensionOrganizer {
   constructor() {
     this.groups = {};
@@ -64,98 +66,7 @@ class ExtensionOrganizer {
   }
 
   async migrateFromLocalStorage() {
-    try {
-      // --- One-time cleanup: move device-local keys out of sync storage ---
-      // This runs independently of the original migration (which may already be complete).
-      const deviceMigration = await chrome.storage.local.get(['deviceDataMigrated']);
-      if (!deviceMigration.deviceDataMigrated) {
-        // Move extensionNameCache: sync → local
-        const staleCache = await chrome.storage.sync.get(['extensionNameCache']);
-        if (staleCache.extensionNameCache) {
-          await chrome.storage.local.set({ extensionNameCache: staleCache.extensionNameCache });
-          await chrome.storage.sync.remove(['extensionNameCache']);
-          console.log('[Sync Fix] Moved extensionNameCache from sync to local storage');
-        }
-
-        // Move removedExtensions: sync → local (merge, don't overwrite)
-        const staleDeviceData = await chrome.storage.sync.get(['removedExtensions', 'failedToggles']);
-        if (staleDeviceData.removedExtensions) {
-          const localResult = await chrome.storage.local.get(['removedExtensions']);
-          const existing = localResult.removedExtensions || [];
-          const merged = [...staleDeviceData.removedExtensions, ...existing].slice(0, 50);
-          await chrome.storage.local.set({ removedExtensions: merged });
-          await chrome.storage.sync.remove(['removedExtensions']);
-          console.log('[Sync Fix] Moved removedExtensions from sync to local storage');
-        }
-
-        // Move failedToggles: sync → local (merge, don't overwrite)
-        if (staleDeviceData.failedToggles) {
-          const localResult = await chrome.storage.local.get(['failedToggles']);
-          const existing = localResult.failedToggles || [];
-          const merged = [...staleDeviceData.failedToggles, ...existing].slice(0, 100);
-          await chrome.storage.local.set({ failedToggles: merged });
-          await chrome.storage.sync.remove(['failedToggles']);
-          console.log('[Sync Fix] Moved failedToggles from sync to local storage');
-        }
-
-        // Also clean up legacy migrationCompleted flag
-        const legacyFlag = await chrome.storage.sync.get(['migrationCompleted']);
-        if (legacyFlag.migrationCompleted !== undefined) {
-          await chrome.storage.sync.remove(['migrationCompleted']);
-          console.log('[Sync Fix] Removed legacy migrationCompleted flag from sync storage');
-        }
-
-        // Mark device data migration complete
-        await chrome.storage.local.set({ deviceDataMigrated: true });
-        console.log('[Sync Fix] Device data migration complete');
-      }
-      // --- End device-local key cleanup ---
-
-      // --- Groups migration: local storage → sync storage ---
-      // Only run if there is actual local data to migrate up.
-      // Do NOT set migrationCompleted on a fresh device where sync hasn't propagated yet —
-      // that races with sync propagation and can permanently block groups from loading.
-
-      const localResult = await chrome.storage.local.get(['groups', 'groupOrder']);
-      const hasLocalData = localResult.groups && Object.keys(localResult.groups).length > 0;
-
-      if (!hasLocalData) {
-        // Nothing to migrate — fresh install or already migrated.
-        // Do NOT write migrationCompleted here; if sync has groups they'll load fine.
-        return;
-      }
-
-      // Local has data. Check if sync already has groups too.
-      const syncResult = await chrome.storage.sync.get(['groups']);
-      const hasSyncData = syncResult.groups && Object.keys(syncResult.groups).length > 0;
-
-      if (hasSyncData) {
-        // Sync wins — local copy is a harmless safety backup; loadData() reads sync first.
-        console.log('[Sync Fix] Sync has data — local copy retained as safety backup');
-        return;
-      }
-
-      // Local has data, sync is empty: safe to migrate up.
-      console.log('[Sync Fix] Migrating groups from local to sync storage...');
-      const dataToMigrate = {};
-      if (localResult.groups) dataToMigrate.groups = localResult.groups;
-      if (localResult.groupOrder) dataToMigrate.groupOrder = localResult.groupOrder;
-
-      try {
-        await chrome.storage.sync.set(dataToMigrate);
-        await chrome.storage.local.remove(['groups', 'groupOrder']);
-        console.log('[Sync Fix] Groups migrated successfully');
-      } catch (migrationError) {
-        console.error('[Sync Fix] Groups migration failed:', migrationError);
-        if (migrationError.message && migrationError.message.includes('QUOTA')) {
-          console.log('[Sync Fix] Migration failed due to quota — keeping local storage');
-        }
-        // Do not rethrow — extension continues working from local data
-      }
-    } catch (error) {
-      console.error('[Web Store Debug] Failed to migrate from local storage:', error);
-      // Don't throw - allow the extension to continue with current data
-    }
+    return window.ExtWranglerShared.migrateFromLocalStorage(null);
   }
 
   async checkFailureHistory() {
@@ -298,130 +209,23 @@ class ExtensionOrganizer {
   }
 
   async cleanupOrphanedExtensions() {
-    // Don't run cleanup if there was an error loading extensions
-    if (this.extensionLoadError) {
-      console.warn('⚠️ Skipping cleanup due to extension load error');
-      return;
-    }
-    
-    let hasChanges = false;
-    const validExtensionIds = new Set(Object.keys(this.extensions));
-    const removedExtensions = [];
-    
-    // Safety check - if no extensions loaded, don't clean up
-    if (validExtensionIds.size === 0) {
-      console.warn('⚠️ No extensions loaded - skipping cleanup to prevent data loss');
-      return;
-    }
-    
-    console.log(`🧹 Checking for orphaned extensions (${validExtensionIds.size} valid extensions found)...`);
-    
-    // Check each group for orphaned extensions
-    for (const [, group] of Object.entries(this.groups)) {
-      const originalLength = group.extensions.length;
-      const beforeExtensions = [...group.extensions];
-      
-      // Filter out extensions that no longer exist and track what we're removing
-      const extensionsToKeep = [];
-      for (const extId of group.extensions) {
-        const exists = validExtensionIds.has(extId);
-        if (exists) {
-          extensionsToKeep.push(extId);
-        } else {
-          // Try to get the extension name from our cached data or use the ID
-          const extensionName = await this.getCachedExtensionName(extId);
-          removedExtensions.push({
-            id: extId,
-            name: extensionName,
-            groupName: group.name
-          });
-          console.warn(`Removing orphaned extension ${extensionName} (${extId}) from group "${group.name}"`);
-        }
-      }
-      group.extensions = extensionsToKeep;
-      
-      if (group.extensions.length !== originalLength) {
-        hasChanges = true;
-        const removed = beforeExtensions.filter(id => !group.extensions.includes(id));
-        console.log(`Cleaned ${removed.length} orphaned extension(s) from group "${group.name}"`);
-      }
-    }
-    
-    // Save changes and track removals if any orphaned extensions were removed
-    if (hasChanges) {
-      await this.saveData();
-      await this.trackRemovedExtensions(removedExtensions);
-      console.log('✅ Orphaned extensions cleanup complete');
-      
-      // Log removal summary for console users
-      if (removedExtensions.length > 0) {
-        this.logRemovedExtensions(removedExtensions);
-      }
-    } else {
-      console.log('✅ No orphaned extensions found');
-    }
+    return window.ExtWranglerShared.cleanupOrphanedExtensions(this, null);
   }
 
   async getCachedExtensionName(extensionId) {
-    // Try to get the name from our cached extension names
-    const cache = await this.getCachedRemovedExtensions();
-    const cached = cache[extensionId];
-    return cached ? cached.name : extensionId.slice(0, 8) + '...';
+    return window.ExtWranglerShared.getCachedExtensionName(extensionId);
   }
 
   async cacheExtensionNames() {
-    try {
-      const result = await chrome.storage.local.get(['extensionNameCache']);  // was sync
-      const existingCache = result.extensionNameCache || {};
-      const updatedCache = { ...existingCache };
-      Object.values(this.extensions).forEach(ext => {
-        updatedCache[ext.id] = { name: ext.name, lastSeen: new Date().toISOString() };
-      });
-      const entries = Object.entries(updatedCache)
-        .sort((a, b) => new Date(b[1].lastSeen) - new Date(a[1].lastSeen))
-        .slice(0, 200);
-      const trimmedCache = Object.fromEntries(entries);
-      await chrome.storage.local.set({ extensionNameCache: trimmedCache });  // was sync
-    } catch (error) {
-      console.error('Failed to cache extension names:', error);
-    }
+    return window.ExtWranglerShared.cacheExtensionNames(this);
   }
 
   async getCachedRemovedExtensions() {
-    try {
-      const result = await chrome.storage.local.get(['extensionNameCache']);  // was sync
-      return result.extensionNameCache || {};
-    } catch (error) {
-      console.error('Failed to get cached extension names:', error);
-      return {};
-    }
+    return window.ExtWranglerShared.getNameCache();
   }
 
   async trackRemovedExtensions(removedExtensions) {
-    if (removedExtensions.length === 0) return;
-
-    try {
-      // Get existing removal history
-      const result = await chrome.storage.local.get(['removedExtensions']);
-      const existingRemovals = result.removedExtensions || [];
-
-      // Add new removals with timestamp
-      const newRemovals = removedExtensions.map(ext => ({
-        ...ext,
-        removedAt: new Date().toISOString(),
-        cleanedUp: true
-      }));
-      
-      // Keep only last 50 removals to avoid storage bloat
-      const allRemovals = [...newRemovals, ...existingRemovals].slice(0, 50);
-      
-      // Save to storage
-      await chrome.storage.local.set({ removedExtensions: allRemovals });
-
-      console.log('[Sync Fix] Tracked removed extensions:', newRemovals);
-    } catch (error) {
-      console.error('Failed to track removed extensions:', error);
-    }
+    return window.ExtWranglerShared.trackRemovedExtensions(removedExtensions);
   }
 
   logRemovedExtensions(removedExtensions) {
@@ -434,76 +238,7 @@ class ExtensionOrganizer {
   }
 
   async loadExtensions() {
-    try {
-      console.log('🔄 Attempting to load extensions...');
-      let extensions = await chrome.management.getAll();
-
-      // Chrome Web Store fix: Retry if no extensions loaded or API returned empty/invalid result
-      if (!extensions || extensions.length === 0 || !Array.isArray(extensions)) {
-        console.warn('⚠️ Initial extension load failed or returned empty - retrying for Chrome Web Store compatibility...');
-
-        // Wait a bit for Chrome Web Store to fully initialize
-        await new Promise(resolve => setTimeout(resolve, 1500));
-
-        try {
-          extensions = await chrome.management.getAll();
-          console.log('🔄 Retry attempt completed, got:', extensions ? extensions.length : 'null', 'extensions');
-        } catch (retryError) {
-          console.error('❌ Retry attempt also failed:', retryError);
-          throw retryError;
-        }
-      }
-
-      // Reset extensions object
-      this.extensions = {};
-
-      // Process extensions with additional validation
-      if (extensions && Array.isArray(extensions)) {
-        extensions.forEach(ext => {
-          if (ext && ext.type === 'extension' && ext.id && ext.id !== chrome.runtime.id) {
-            this.extensions[ext.id] = ext;
-          }
-        });
-      }
-
-      const loadedCount = Object.keys(this.extensions).length;
-      console.log(`✅ Loaded ${loadedCount} extensions`);
-
-      // Enhanced debugging for Chrome Web Store issues
-      console.log(`[Web Store Debug] Extension loading details:`, {
-        rawExtensionsCount: extensions ? extensions.length : 'null',
-        filteredExtensionsCount: loadedCount,
-        extensionIds: Object.keys(this.extensions),
-        timestamp: new Date().toISOString()
-      });
-
-      // Cache extension names for future reference
-      await this.cacheExtensionNames();
-
-      // Verify we loaded extensions with more detailed warning
-      if (loadedCount === 0) {
-        console.warn('⚠️ WARNING: No extensions were loaded!');
-        console.warn('This could indicate:');
-        console.warn('- Chrome Web Store security restrictions');
-        console.warn('- Extension permissions not granted');
-        console.warn('- API timing issues');
-        console.warn('- Genuinely no other extensions installed');
-      }
-    } catch (error) {
-      console.error('❌ Failed to load extensions:', error);
-
-      // Enhanced error logging for Chrome Web Store debugging
-      console.error(`[Web Store Debug] Extension loading failed:`, {
-        error: error.message,
-        errorCode: error.code || 'unknown',
-        stack: error.stack,
-        timestamp: new Date().toISOString(),
-        userAgent: navigator.userAgent
-      });
-
-      // Set a flag to prevent cleanup
-      this.extensionLoadError = true;
-    }
+    return window.ExtWranglerShared.loadExtensions(this);
   }
 
   async saveData() {
@@ -1025,9 +760,7 @@ class ExtensionOrganizer {
   }
 
   getExtensionGroups(extId) {
-    return Object.values(this.groups)
-      .filter(group => group.extensions.includes(extId))
-      .map(group => group.name);
+    return window.ExtWranglerShared.getExtensionGroups(this.groups, extId);
   }
 
   handleSearch(query) {
