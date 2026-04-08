@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Extension Wrangler",
-  "version": "1.1.3",
+  "version": "1.1.4",
   "description": "A Chrome extension for organizing and managing your extensions with custom groups, reordering, and bulk toggle controls.",
   "author": "Kelsey Whytock",
   "permissions": [

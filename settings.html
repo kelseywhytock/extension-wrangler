@@ -289,7 +289,7 @@
       padding: 8px 16px;
       background: white;
       border-radius: 20px;
-      font-size: 14px;
+      font-size: 10px;
       font-weight: 500;
     }
 
@@ -691,15 +691,15 @@
       .main-content {
         grid-template-columns: 1fr;
       }
-      
+
       .container {
         padding: 16px;
       }
-      
+
       .header {
         padding: 24px;
       }
-      
+
       .groups-section, .sidebar {
         padding: 24px;
       }
@@ -716,7 +716,7 @@
     <div class="main-content">
       <div class="groups-section">
         <div class="section-title">Extension Management</div>
-        
+
         <div class="tabs">
           <div class="tab active" data-tab="groups">Extension Groups</div>
           <div class="tab" data-tab="extensions">Extension List</div>
@@ -760,11 +760,11 @@
 
       <div class="sidebar">
         <div class="section-subtitle">✨ Chrome Profile Sync</div>
-        <div style="background: #e8f0fe; border: 1px solid #4285f4; border-radius: 8px; padding: 16px; margin-bottom: 24px; font-size: 14px;">
-          <div style="font-weight: 600; color: #1558d6; margin-bottom: 8px;">Your groups now sync across devices!</div>
-          <div style="color: #5f6368;">Settings are automatically synchronized with your Chrome profile and available on all your devices.</div>
+        <div id="syncStatusCard" style="background: #f8f9fa; border: 1px solid #e8eaed; border-radius: 8px; padding: 16px; margin-bottom: 24px; font-size: 14px;">
+          <div id="syncStatusTitle" style="font-weight: 600; margin-bottom: 8px; color: #5f6368;">Checking sync status...</div>
+          <div id="syncStatusBody" style="color: #5f6368;">Verifying connection to Chrome Sync.</div>
         </div>
-        
+
         <div class="section-subtitle">Extension Summary</div>
         <div id="extensionSummary">
           <div class="stat">
@@ -786,7 +786,7 @@
           <div style="font-weight: 600; color: #1a1a1a; margin-bottom: 8px;">Drag & Drop Reordering</div>
           <div style="color: #5f6368;">Drag groups by their handle to reorder them. The Fixed group always stays at the bottom.</div>
         </div>
-        
+
         <div class="section-subtitle">Quick Actions</div>
         <div style="display: flex; flex-direction: column; gap: 12px;">
           <button class="btn btn-success btn-small" id="enableAllBtn">Enable All Extensions</button>
@@ -794,7 +794,7 @@
           <button class="btn btn-secondary btn-small" id="exportBtn">Export Groups</button>
           <button class="btn btn-secondary btn-small" id="importBtn">Import Groups</button>
         </div>
-        
+
         <div class="section-subtitle" style="margin-top: 32px;">🗑️ Recently Removed</div>
         <div id="removedExtensionsSection" style="font-size: 14px;">
           <div id="removedExtensionsList" style="max-height: 200px; overflow-y: auto;"></div>
@@ -809,11 +809,11 @@
     <div class="modal-content">
       <div class="modal-header" id="modalTitle">Create New Group</div>
       <input type="text" class="modal-input" id="groupNameInput" placeholder="Enter group name">
-      
+
       <div class="section-subtitle">Select Extensions</div>
       <input type="text" class="modal-input" id="modalExtensionSearchInput" placeholder="Search extensions...">
       <div class="checkbox-list" id="extensionsList"></div>
-      
+
       <div class="modal-actions">
         <button class="btn btn-secondary" id="cancelBtn">Cancel</button>
         <button class="btn btn-primary" id="saveBtn">Save Group</button>

@@ -43,6 +43,18 @@ class ExtensionOrganizer {
       }
     }
 
+    // Check if Chrome Sync is actually operational
+    try {
+      if (window.webStoreUtils) {
+        const syncStatus = await window.webStoreUtils.checkSyncStatus();
+        if (!syncStatus.operational) {
+          this.showSyncWarning();
+        }
+      }
+    } catch (e) {
+      console.warn('[Sync Fix] Could not check sync status:', e);
+    }
+
     // Log summary
     console.log('📊 Initialization complete:', {
       extensionsLoaded: Object.keys(this.extensions).length,
@@ -155,6 +167,54 @@ class ExtensionOrganizer {
     } catch (error) {
       console.error('Failed to check failure history:', error);
     }
+  }
+
+  showSyncWarning() {
+    if (document.getElementById('syncWarningBanner')) return;
+
+    const banner = document.createElement('div');
+    banner.id = 'syncWarningBanner';
+    banner.style.cssText = [
+      'background:#fef7e0',
+      'border:1px solid #f9ab00',
+      'border-radius:6px',
+      'padding:10px 14px',
+      'margin-bottom:12px',
+      'font-size:12px',
+      'color:#7a5900',
+      'display:flex',
+      'align-items:flex-start',
+      'gap:8px'
+    ].join(';');
+
+    const icon = document.createElement('span');
+    icon.style.cssText = 'font-size:16px;line-height:1.2';
+    icon.textContent = '\u26A0\uFE0F';
+
+    const textWrap = document.createElement('span');
+
+    const strong = document.createElement('strong');
+    strong.textContent = 'Sync unavailable.';
+
+    const link = document.createElement('a');
+    link.href = '#';
+    link.style.color = '#1558d6';
+    link.textContent = 'Chrome settings';
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      chrome.tabs.create({ url: 'chrome://settings/syncSetup' });
+    });
+
+    textWrap.appendChild(strong);
+    textWrap.appendChild(document.createTextNode(' Your groups are saved locally on this device only. To sync across devices, sign into Chrome and enable Sync > Extensions in '));
+    textWrap.appendChild(link);
+    textWrap.appendChild(document.createTextNode('.'));
+
+    banner.appendChild(icon);
+    banner.appendChild(textWrap);
+
+    const container = document.querySelector('.content') || document.body;
+    container.insertBefore(banner, container.firstChild);
   }
 
   async loadData() {

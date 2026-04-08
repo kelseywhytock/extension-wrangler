@@ -17,6 +17,16 @@ class ExtensionWranglerSettings {
       await this.loadExtensions();
       this.setupEventListeners();
       this.render();
+
+      // Check if Chrome Sync is actually operational
+      if (window.webStoreUtils) {
+        const syncStatus = await window.webStoreUtils.checkSyncStatus();
+        this.updateSyncStatusCard(syncStatus.operational);
+        if (!syncStatus.operational) {
+          this.showSyncWarning();
+        }
+      }
+
       console.log('✅ Settings initialization complete');
     } catch (error) {
       console.error('❌ Settings initialization failed:', error);
@@ -146,10 +156,23 @@ class ExtensionWranglerSettings {
         await this.saveData();
       }
 
-      // Initialize group order if empty
-      if (this.groupOrder.length === 0) {
-        this.groupOrder = Object.keys(this.groups);
+      // Repair groupOrder if it's missing or doesn't include all groups.
+      // This can happen when groups and groupOrder are saved separately and one
+      // write fails, or after a migration that only partially synced.
+      const allGroupIds = Object.keys(this.groups);
+      const missingFromOrder = allGroupIds.filter(id => !this.groupOrder.includes(id));
+      if (this.groupOrder.length === 0 || missingFromOrder.length > 0) {
+        if (missingFromOrder.length > 0) {
+          console.warn('[Sync Fix] groupOrder missing entries, repairing:', missingFromOrder);
+        }
+        // Preserve existing order for known groups, append any missing ones before Fixed
+        const fixedId = allGroupIds.find(id => this.groups[id]?.isDefault);
+        const ordered = this.groupOrder.filter(id => allGroupIds.includes(id) && id !== fixedId);
+        missingFromOrder.filter(id => id !== fixedId).forEach(id => ordered.push(id));
+        if (fixedId) ordered.push(fixedId);
+        this.groupOrder = ordered;
         await this.saveGroupOrder();
+        console.log('[Sync Fix] groupOrder repaired:', this.groupOrder);
       }
 
       // Clean up orphaned extensions after loading all data
@@ -387,7 +410,9 @@ class ExtensionWranglerSettings {
 
   async saveData() {
     try {
-      await chrome.storage.sync.set({ groups: this.groups });
+      // Always write groups and groupOrder together so they never diverge
+      // if one write fails and the other succeeds.
+      await chrome.storage.sync.set({ groups: this.groups, groupOrder: this.groupOrder });
     } catch (error) {
       console.error('Failed to save data:', error);
       this.showNotification('Failed to save changes', 'error');
@@ -397,7 +422,8 @@ class ExtensionWranglerSettings {
 
   async saveGroupOrder() {
     try {
-      await chrome.storage.sync.set({ groupOrder: this.groupOrder });
+      // Always write groups and groupOrder together so they never diverge.
+      await chrome.storage.sync.set({ groups: this.groups, groupOrder: this.groupOrder });
     } catch (error) {
       console.error('Failed to save group order:', error);
       throw error;
@@ -1046,7 +1072,102 @@ class ExtensionWranglerSettings {
 
     await this.saveGroupOrder();
     this.showNotification('Group order updated', 'success');
-    this.render();
+
+    // Move DOM nodes in-place rather than calling render(), which would destroy
+    // and recreate all cards — wiping draggable attributes and event listeners
+    // in packaged extension context.
+    const container = document.getElementById('groupsList');
+    if (container) {
+      const cards = [...container.querySelectorAll('.group-card')];
+      // Build a map of groupId → card element using the data-group-id on the header
+      const cardMap = {};
+      cards.forEach(card => {
+        const header = card.querySelector('[data-group-id]');
+        if (header) cardMap[header.dataset.groupId] = card;
+      });
+      // Re-append in the new order (Fixed group card stays last)
+      newOrder.forEach(id => {
+        if (cardMap[id]) container.appendChild(cardMap[id]);
+      });
+      // Ensure Fixed group card is last
+      const fixedCard = cards.find(card => {
+        const header = card.querySelector('[data-group-id]');
+        return header && this.groups[header.dataset.groupId]?.isDefault;
+      });
+      if (fixedCard) container.appendChild(fixedCard);
+    } else {
+      // Fallback: full re-render if container not found
+      this.render();
+    }
+  }
+
+  updateSyncStatusCard(operational) {
+    const card = document.getElementById('syncStatusCard');
+    const title = document.getElementById('syncStatusTitle');
+    const body = document.getElementById('syncStatusBody');
+    if (!card || !title || !body) return;
+
+    if (operational) {
+      card.style.background = '#e8f0fe';
+      card.style.borderColor = '#4285f4';
+      title.style.color = '#1558d6';
+      title.textContent = 'Your groups sync across devices!';
+      body.textContent = 'Settings are automatically synchronized with your Chrome profile and available on all your devices.';
+    } else {
+      card.style.background = '#fef7e0';
+      card.style.borderColor = '#f9ab00';
+      title.style.color = '#7a5900';
+      title.textContent = 'Sync is currently unavailable';
+      body.textContent = 'Sign into Chrome with the same Google account on all devices and enable Sync > Extensions to sync your groups.';
+    }
+  }
+
+  showSyncWarning() {
+    if (document.getElementById('syncWarningBanner')) return;
+
+    const banner = document.createElement('div');
+    banner.id = 'syncWarningBanner';
+    banner.style.cssText = [
+      'background:#fef7e0',
+      'border:1px solid #f9ab00',
+      'border-radius:6px',
+      'padding:12px 16px',
+      'margin:0 0 16px 0',
+      'font-size:13px',
+      'color:#7a5900',
+      'display:flex',
+      'align-items:flex-start',
+      'gap:10px'
+    ].join(';');
+
+    const icon = document.createElement('span');
+    icon.style.cssText = 'font-size:18px;line-height:1.2';
+    icon.textContent = '\u26A0\uFE0F';
+
+    const textWrap = document.createElement('span');
+
+    const strong = document.createElement('strong');
+    strong.textContent = 'Chrome Sync is unavailable.';
+
+    const link = document.createElement('a');
+    link.href = '#';
+    link.style.color = '#1558d6';
+    link.textContent = 'Chrome settings';
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      chrome.tabs.create({ url: 'chrome://settings/syncSetup' });
+    });
+
+    textWrap.appendChild(strong);
+    textWrap.appendChild(document.createTextNode(' Your groups are saved locally on this device only. To sync across all devices, make sure you are signed into Chrome with the same Google account and that Sync > Extensions is enabled in '));
+    textWrap.appendChild(link);
+    textWrap.appendChild(document.createTextNode('.'));
+
+    banner.appendChild(icon);
+    banner.appendChild(textWrap);
+
+    const mainContent = document.querySelector('.main-content') || document.body;
+    mainContent.insertBefore(banner, mainContent.firstChild);
   }
 
   showNotification(message, type = 'success') {
@@ -1261,14 +1382,15 @@ class ExtensionWranglerSettings {
 
       // Add drag and drop functionality
       if (!group.isDefault) {
-        // Only non-Fixed groups can be dragged
-        groupCard.draggable = true;
+        // Use setAttribute so draggable survives re-renders in packaged extensions.
+        // Setting groupCard.draggable = true as a JS property after innerHTML can
+        // fail to register dragstart in Web Store context.
+        groupCard.setAttribute('draggable', 'true');
 
         groupCard.addEventListener('dragstart', (e) => {
-          // Set drag data and visual feedback
           e.dataTransfer.effectAllowed = 'move';
           e.dataTransfer.setData('text/plain', group.id);
-          this.draggedGroupId = group.id; // Fallback
+          this.draggedGroupId = group.id;
           groupCard.classList.add('dragging');
         });
 
@@ -1277,7 +1399,7 @@ class ExtensionWranglerSettings {
           document.querySelectorAll('.group-card').forEach(card => {
             card.classList.remove('drag-over');
           });
-          // FIX: Use setTimeout to prevent race condition with drop event
+          // Clear after drop event has had a chance to fire
           setTimeout(() => {
             this.draggedGroupId = null;
           }, 0);
@@ -1289,8 +1411,10 @@ class ExtensionWranglerSettings {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
 
-        const draggedId = e.dataTransfer.getData('text/plain');
-        if (draggedId && draggedId !== group.id) {
+        // dataTransfer.getData() returns empty string during dragover in packaged
+        // extensions — only available in dragstart and drop. Use the instance
+        // property instead.
+        if (this.draggedGroupId && this.draggedGroupId !== group.id) {
           groupCard.classList.add('drag-over');
         }
       });
@@ -1303,12 +1427,8 @@ class ExtensionWranglerSettings {
         e.preventDefault();
         groupCard.classList.remove('drag-over');
 
-        let draggedId = e.dataTransfer.getData('text/plain');
-        // Fallback to stored property if dataTransfer is empty
-        if (!draggedId) {
-          draggedId = this.draggedGroupId;
-          console.log('[Drag Debug] Used fallback draggedGroupId:', draggedId);
-        }
+        // dataTransfer is the canonical source; draggedGroupId is the reliable fallback
+        const draggedId = e.dataTransfer.getData('text/plain') || this.draggedGroupId;
 
         if (draggedId && draggedId !== group.id) {
           this.reorderGroups(draggedId, group.id);
