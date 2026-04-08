@@ -17,7 +17,7 @@ class ExtensionOrganizer {
     this.initTime = Date.now();
 
     // Run Web Store diagnostics first
-    if (window.webStoreUtils) {
+    if (_DEBUG && window.webStoreUtils) {
       await window.webStoreUtils.runDiagnostics();
     }
 
@@ -58,11 +58,13 @@ class ExtensionOrganizer {
     }
 
     // Log summary
-    console.log('📊 Initialization complete:', {
-      extensionsLoaded: Object.keys(this.extensions).length,
-      groupsLoaded: Object.keys(this.groups).length,
-      totalExtensionsInGroups: Object.values(this.groups).reduce((sum, g) => sum + g.extensions.length, 0)
-    });
+    if (_DEBUG) {
+      console.log('📊 Initialization complete:', {
+        extensionsLoaded: Object.keys(this.extensions).length,
+        groupsLoaded: Object.keys(this.groups).length,
+        totalExtensionsInGroups: Object.values(this.groups).reduce((sum, g) => sum + g.extensions.length, 0)
+      });
+    }
   }
 
   async migrateFromLocalStorage() {
@@ -137,10 +139,10 @@ class ExtensionOrganizer {
       this.groups = result.groups || {};
       this.groupOrder = result.groupOrder || [];
 
-      // Ensure "Fixed" group exists
-      if (!this.groups['always-on']) {
-        this.groups['always-on'] = {
-          id: 'always-on',
+      // Ensure "Always On" group exists
+      if (!this.groups[window.ExtWranglerShared.ALWAYS_ON_GROUP_ID]) {
+        this.groups[window.ExtWranglerShared.ALWAYS_ON_GROUP_ID] = {
+          id: window.ExtWranglerShared.ALWAYS_ON_GROUP_ID,
           name: 'Always On',
           extensions: [],
           isDefault: true
@@ -167,12 +169,14 @@ class ExtensionOrganizer {
       await this.cleanupOrphanedExtensions();
 
       // Log successful load for Web Store debugging
-      console.log(`[Web Store Debug] Data loaded successfully:`, {
-        groupsCount: Object.keys(this.groups).length,
-        totalExtensionsInGroups: Object.values(this.groups).reduce((sum, g) => sum + g.extensions.length, 0),
-        storageType: 'sync',
-        timestamp: new Date().toISOString()
-      });
+      if (_DEBUG) {
+        console.log(`[Web Store Debug] Data loaded successfully:`, {
+          groupsCount: Object.keys(this.groups).length,
+          totalExtensionsInGroups: Object.values(this.groups).reduce((sum, g) => sum + g.extensions.length, 0),
+          storageType: 'sync',
+          timestamp: new Date().toISOString()
+        });
+      }
 
     } catch (error) {
       console.error('Failed to load data:', error);
@@ -188,13 +192,13 @@ class ExtensionOrganizer {
 
       // Fallback to local storage
       try {
-        console.log(`[Web Store Debug] Attempting fallback to local storage...`);
+        if (_DEBUG) { console.log(`[Web Store Debug] Attempting fallback to local storage...`); }
         const localResult = await chrome.storage.local.get(['groups', 'groupOrder']);
 
         if (localResult.groups && Object.keys(localResult.groups).length > 0) {
           this.groups = localResult.groups;
           this.groupOrder = localResult.groupOrder || Object.keys(localResult.groups);
-          console.log(`[Web Store Debug] Fallback successful - loaded from local storage`);
+          if (_DEBUG) { console.log(`[Web Store Debug] Fallback successful - loaded from local storage`); }
         } else {
           throw new Error('No data found in local storage either');
         }
@@ -203,16 +207,16 @@ class ExtensionOrganizer {
 
         // Final fallback to default state
         this.groups = {
-          'always-on': {
-            id: 'always-on',
+          [window.ExtWranglerShared.ALWAYS_ON_GROUP_ID]: {
+            id: window.ExtWranglerShared.ALWAYS_ON_GROUP_ID,
             name: 'Always On',
             extensions: [],
             isDefault: true
           }
         };
-        this.groupOrder = ['always-on'];
+        this.groupOrder = [window.ExtWranglerShared.ALWAYS_ON_GROUP_ID];
 
-        console.log(`[Web Store Debug] Using default state due to storage failures`);
+        if (_DEBUG) { console.log(`[Web Store Debug] Using default state due to storage failures`); }
       }
     }
   }
@@ -443,13 +447,13 @@ class ExtensionOrganizer {
         throw new Error('Invalid groups data');
       }
       
-      // Merge with existing groups (preserving the Fixed group)
-      const fixedGroup = this.groups['always-on'];
+      // Merge with existing groups (preserving the Always On group)
+      const fixedGroup = this.groups[window.ExtWranglerShared.ALWAYS_ON_GROUP_ID];
       this.groups = groups;
-      
-      // Ensure Fixed group is preserved
+
+      // Ensure Always On group is preserved
       if (fixedGroup) {
-        this.groups['always-on'] = fixedGroup;
+        this.groups[window.ExtWranglerShared.ALWAYS_ON_GROUP_ID] = fixedGroup;
       }
       
       await this.saveData();
@@ -829,7 +833,7 @@ class ExtensionOrganizer {
     const emptyState = document.getElementById('emptyState');
 
     const groupIds = Object.keys(this.groups);
-    const hasGroups = groupIds.length > 1 || (groupIds.length === 1 && groupIds[0] !== 'always-on');
+    const hasGroups = groupIds.length > 1 || (groupIds.length === 1 && groupIds[0] !== window.ExtWranglerShared.ALWAYS_ON_GROUP_ID);
 
     if (!hasGroups) {
       emptyState.style.display = 'block';
@@ -840,12 +844,12 @@ class ExtensionOrganizer {
     emptyState.style.display = 'none';
     container.querySelectorAll('.group').forEach(el => el.remove());
 
-    // Sort groups based on saved order, with Fixed group always last
+    // Sort groups based on saved order, with Always On group always last
     const sortedGroups = [...this.groupOrder]
       .filter(id => this.groups[id] && !this.groups[id].isDefault)
       .map(id => this.groups[id]);
 
-    // Add Fixed group at the end
+    // Add Always On group at the end
     const fixedGroup = Object.values(this.groups).find(g => g.isDefault);
     if (fixedGroup) {
       sortedGroups.push(fixedGroup);

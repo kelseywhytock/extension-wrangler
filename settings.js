@@ -54,10 +54,10 @@ class ExtensionWranglerSettings {
       this.groups = result.groups || {};
       this.groupOrder = result.groupOrder || [];
 
-      // Ensure "Fixed" group exists
-      if (!this.groups['always-on']) {
-        this.groups['always-on'] = {
-          id: 'always-on',
+      // Ensure "Always On" group exists
+      if (!this.groups[window.ExtWranglerShared.ALWAYS_ON_GROUP_ID]) {
+        this.groups[window.ExtWranglerShared.ALWAYS_ON_GROUP_ID] = {
+          id: window.ExtWranglerShared.ALWAYS_ON_GROUP_ID,
           name: 'Always On',
           extensions: [],
           isDefault: true
@@ -74,7 +74,7 @@ class ExtensionWranglerSettings {
         if (missingFromOrder.length > 0) {
           console.warn('[Sync Fix] groupOrder missing entries, repairing:', missingFromOrder);
         }
-        // Preserve existing order for known groups, append any missing ones before Fixed
+        // Preserve existing order for known groups, append any missing ones before Always On
         const fixedId = allGroupIds.find(id => this.groups[id]?.isDefault);
         const ordered = this.groupOrder.filter(id => allGroupIds.includes(id) && id !== fixedId);
         missingFromOrder.filter(id => id !== fixedId).forEach(id => ordered.push(id));
@@ -373,7 +373,7 @@ class ExtensionWranglerSettings {
         isDefault: false
       };
 
-      // Add to group order (at the beginning, before Fixed group)
+      // Add to group order (at the beginning, before Always On group)
       this.groupOrder.unshift(id);
       await this.saveGroupOrder();
       this.showNotification('Group created successfully', 'success');
@@ -758,7 +758,7 @@ class ExtensionWranglerSettings {
       timestamp: new Date().toISOString()
     });
 
-    // Don't allow dragging the Fixed group
+    // Don't allow dragging the Always On group
     if (this.groups[draggedId]?.isDefault) {
       console.log('Cannot drag the Always On group');
       return;
@@ -809,9 +809,9 @@ class ExtensionWranglerSettings {
     let insertIndex;
 
     if (this.groups[targetId]?.isDefault) {
-      // If dropping on Fixed group, insert at the end (before Fixed group)
+      // If dropping on Always On group, insert at the end (before Always On group)
       insertIndex = newOrder.length;
-      console.log('Dropping before Fixed group at end');
+      console.log('Dropping before Always On group at end');
     } else {
       // Find the target's new position after removal and insert before it
       const targetIndex = newOrder.indexOf(targetId);
@@ -840,7 +840,7 @@ class ExtensionWranglerSettings {
         const header = card.querySelector('[data-group-id]');
         if (header) cardMap[header.dataset.groupId] = card;
       });
-      // Re-append in the new order (Fixed group card stays last)
+      // Re-append in the new order (Always On group card stays last)
       newOrder.forEach(id => {
         if (cardMap[id] && !this.groups[id]?.isDefault) container.appendChild(cardMap[id]);
       });
@@ -991,12 +991,12 @@ class ExtensionWranglerSettings {
     emptyState.style.display = 'none';
     container.querySelectorAll('.group-card').forEach(el => el.remove());
 
-    // Sort groups based on saved order, with Fixed group always last
+    // Sort groups based on saved order, with Always On group always last
     const sortedGroups = [...this.groupOrder]
       .filter(id => this.groups[id] && !this.groups[id].isDefault)
       .map(id => this.groups[id]);
 
-    // Add Fixed group at the end
+    // Add Always On group at the end
     const fixedGroup = Object.values(this.groups).find(g => g.isDefault);
     if (fixedGroup) {
       sortedGroups.push(fixedGroup);
@@ -1161,7 +1161,7 @@ class ExtensionWranglerSettings {
         });
       }
 
-      // ALL groups can be drop targets (including Fixed group for positioning)
+      // ALL groups can be drop targets (including Always On group for positioning)
       groupCard.addEventListener('dragover', (e) => {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
