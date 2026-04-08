@@ -273,28 +273,17 @@ class ExtensionOrganizer {
 
   async cacheExtensionNames() {
     try {
-      // Get existing cached names
-      const result = await chrome.storage.sync.get(['extensionNameCache']);
+      const result = await chrome.storage.local.get(['extensionNameCache']);  // was sync
       const existingCache = result.extensionNameCache || {};
-      
-      // Add current extension names to cache
       const updatedCache = { ...existingCache };
       Object.values(this.extensions).forEach(ext => {
-        updatedCache[ext.id] = {
-          name: ext.name,
-          lastSeen: new Date().toISOString()
-        };
+        updatedCache[ext.id] = { name: ext.name, lastSeen: new Date().toISOString() };
       });
-      
-      // Keep only the last 200 entries to avoid storage bloat
       const entries = Object.entries(updatedCache)
         .sort((a, b) => new Date(b[1].lastSeen) - new Date(a[1].lastSeen))
         .slice(0, 200);
-      
       const trimmedCache = Object.fromEntries(entries);
-      
-      // Save updated cache
-      await chrome.storage.sync.set({ extensionNameCache: trimmedCache });
+      await chrome.storage.local.set({ extensionNameCache: trimmedCache });  // was sync
     } catch (error) {
       console.error('Failed to cache extension names:', error);
     }
@@ -302,7 +291,7 @@ class ExtensionOrganizer {
 
   async getCachedRemovedExtensions() {
     try {
-      const result = await chrome.storage.sync.get(['extensionNameCache']);
+      const result = await chrome.storage.local.get(['extensionNameCache']);  // was sync
       return result.extensionNameCache || {};
     } catch (error) {
       console.error('Failed to get cached extension names:', error);
