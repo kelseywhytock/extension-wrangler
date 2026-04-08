@@ -180,6 +180,7 @@ class ExtensionOrganizer {
 
     } catch (error) {
       console.error('Failed to load data:', error);
+      this.showNotification('Failed to load groups — check console for details', 'error');
 
       // Enhanced error logging for Web Store issues
       console.error(`[Web Store Debug] Data load failed:`, {
