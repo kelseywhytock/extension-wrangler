@@ -510,6 +510,14 @@ class ExtensionWranglerSettings {
 
       if (confirm('This will overwrite your existing groups. Are you sure?')) {
         this.groups = data.groups;
+        // Rebuild groupOrder from imported data — exported JSON may or may not include it
+        if (Array.isArray(data.groupOrder) && data.groupOrder.length > 0) {
+          this.groupOrder = data.groupOrder.filter(id => this.groups[id]);
+        } else {
+          const fixedId = Object.keys(this.groups).find(id => this.groups[id]?.isDefault);
+          const others = Object.keys(this.groups).filter(id => !this.groups[id]?.isDefault);
+          this.groupOrder = fixedId ? [...others, fixedId] : [...others];
+        }
         await this.saveData();
         this.render();
         this.showNotification('Groups imported successfully', 'success');
