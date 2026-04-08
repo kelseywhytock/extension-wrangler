@@ -522,8 +522,7 @@ class ExtensionOrganizer {
     // Check for failures
     const failures = results.filter(r => !r.success && !r.skipped);
     if (failures.length > 0) {
-      const failedNames = failures.map(f => this.extensions[f.extId]?.name || f.extId).join(', ');
-      alert(`Failed to ${enable ? 'enable' : 'disable'} some extensions: ${failedNames}`);
+      this.showNotification(`Failed to toggle some extensions`, 'error');
     }
 
     await this.loadExtensions();
@@ -939,14 +938,25 @@ class ExtensionOrganizer {
       if (toggleBtn) {
         toggleBtn.addEventListener('click', (e) => {
           e.stopPropagation(); // Prevent accordion toggle
-          // If mixed state (some enabled), disable all. Otherwise toggle normally.
-          const shouldEnable = toggleState === 'disabled';
+          // Read live DOM state instead of captured render-time value to avoid stale closure.
+          const isEnabled = toggleBtn.classList.contains('enabled');
+          const isMixed = toggleBtn.classList.contains('mixed');
+          const shouldEnable = !isEnabled && !isMixed;
           this.toggleGroup(group.id, shouldEnable);
         });
       }
 
       container.appendChild(groupDiv);
     });
+  }
+
+  showNotification(message, type = 'success') {
+    const notification = document.getElementById('notification');
+    if (!notification) return;
+    notification.textContent = message;
+    notification.className = `notification ${type}`;
+    notification.classList.add('show');
+    setTimeout(() => notification.classList.remove('show'), window.ExtWranglerShared.TOAST_DURATION_MS);
   }
 }
 
