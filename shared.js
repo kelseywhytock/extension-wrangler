@@ -169,8 +169,12 @@ window.ExtWranglerShared = (() => {
         timestamp: new Date().toISOString()
       });
 
-      // Cache extension names for future reference
-      await cacheExtensionNames(ctx);
+      // Only rebuild the name cache when the extension set changes, not on every reload
+      const newKey = Object.keys(ctx.extensions).sort().join(',');
+      if (newKey !== ctx._extensionCacheKey) {
+        ctx._extensionCacheKey = newKey;
+        await cacheExtensionNames(ctx);
+      }
 
       // Verify we loaded extensions with more detailed warning
       if (loadedCount === 0) {
