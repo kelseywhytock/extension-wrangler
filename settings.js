@@ -933,7 +933,7 @@ class ExtensionWranglerSettings {
 
     setTimeout(() => {
       notification.classList.remove('show');
-    }, 3000);
+    }, window.ExtWranglerShared.TOAST_DURATION_MS);
   }
 
   updateSummary() {
@@ -1212,7 +1212,7 @@ class ExtensionWranglerSettings {
       container.innerHTML = '';
 
       // Show most recent first
-      removedExtensions.slice(0, 10).forEach(ext => {
+      removedExtensions.slice(0, window.ExtWranglerShared.REMOVED_EXT_DISPLAY_LIMIT).forEach(ext => {
         const div = document.createElement('div');
         div.style.cssText = `
           padding: 8px 12px;
@@ -1239,10 +1239,10 @@ class ExtensionWranglerSettings {
         container.appendChild(div);
       });
 
-      if (removedExtensions.length > 10) {
+      if (removedExtensions.length > window.ExtWranglerShared.REMOVED_EXT_DISPLAY_LIMIT) {
         const moreDiv = document.createElement('div');
         moreDiv.style.cssText = 'padding: 8px 12px; color: #5f6368; font-size: 12px; text-align: center;';
-        moreDiv.textContent = `... and ${removedExtensions.length - 10} more`;
+        moreDiv.textContent = `... and ${removedExtensions.length - window.ExtWranglerShared.REMOVED_EXT_DISPLAY_LIMIT} more`;
         container.appendChild(moreDiv);
       }
 
