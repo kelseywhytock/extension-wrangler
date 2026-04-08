@@ -60,8 +60,8 @@ class ExtensionOrganizer {
       }
 
       // Check if sync storage is empty and local storage has data
-      const syncResult = await chrome.storage.sync.get(['groups', 'groupOrder', 'failedToggles']);
-      const localResult = await chrome.storage.local.get(['groups', 'groupOrder', 'failedToggles']);
+      const syncResult = await chrome.storage.sync.get(['groups', 'groupOrder']);
+      const localResult = await chrome.storage.local.get(['groups', 'groupOrder']);
 
       const hasSyncData = syncResult.groups && Object.keys(syncResult.groups).length > 0;
       const hasLocalData = localResult.groups && Object.keys(localResult.groups).length > 0;
@@ -69,11 +69,10 @@ class ExtensionOrganizer {
       if (!hasSyncData && hasLocalData) {
         console.log('[Web Store Debug] Migrating extension groups from local storage to sync storage...');
 
-        // Copy data to sync storage
+        // Copy data to sync storage (groups only — device-specific data stays local)
         const dataToMigrate = {};
         if (localResult.groups) dataToMigrate.groups = localResult.groups;
         if (localResult.groupOrder) dataToMigrate.groupOrder = localResult.groupOrder;
-        if (localResult.failedToggles) dataToMigrate.failedToggles = localResult.failedToggles;
 
         if (Object.keys(dataToMigrate).length > 0) {
           try {
@@ -83,7 +82,7 @@ class ExtensionOrganizer {
             await chrome.storage.sync.set({ migrationCompleted: true });
 
             // Clear local storage to avoid confusion
-            await chrome.storage.local.remove(['groups', 'groupOrder', 'failedToggles']);
+            await chrome.storage.local.remove(['groups', 'groupOrder']);
 
             console.log('[Web Store Debug] Migration completed successfully');
           } catch (migrationError) {
@@ -109,6 +108,19 @@ class ExtensionOrganizer {
         await chrome.storage.sync.remove(['extensionNameCache']);
         console.log('[Sync Fix] Moved extensionNameCache from sync to local storage');
       }
+
+      // One-time: move removedExtensions and failedToggles out of sync storage into local
+      const staleDeviceData = await chrome.storage.sync.get(['removedExtensions', 'failedToggles']);
+      if (staleDeviceData.removedExtensions) {
+        await chrome.storage.local.set({ removedExtensions: staleDeviceData.removedExtensions });
+        await chrome.storage.sync.remove(['removedExtensions']);
+        console.log('[Sync Fix] Moved removedExtensions from sync to local storage');
+      }
+      if (staleDeviceData.failedToggles) {
+        await chrome.storage.local.set({ failedToggles: staleDeviceData.failedToggles });
+        await chrome.storage.sync.remove(['failedToggles']);
+        console.log('[Sync Fix] Moved failedToggles from sync to local storage');
+      }
     } catch (error) {
       console.error('[Web Store Debug] Failed to migrate from local storage:', error);
       // Don't throw - allow the extension to continue with current data
@@ -117,10 +129,9 @@ class ExtensionOrganizer {
 
   async checkFailureHistory() {
     try {
-      const result = await chrome.storage.sync.get(['failedToggles']);
+      const result = await chrome.storage.local.get(['failedToggles']);
       if (result.failedToggles && result.failedToggles.length > 0) {
-        console.warn('🚨 Previous toggle failures detected:', result.failedToggles.length);
-        console.log('To analyze failures, run: chrome.storage.sync.get(["failedToggles"], (r) => console.table(r.failedToggles))');
+        console.warn('[Sync Fix] Previous toggle failures detected:', result.failedToggles.length);
       }
     } catch (error) {
       console.error('Failed to check failure history:', error);
@@ -309,12 +320,12 @@ class ExtensionOrganizer {
 
   async trackRemovedExtensions(removedExtensions) {
     if (removedExtensions.length === 0) return;
-    
+
     try {
       // Get existing removal history
-      const result = await chrome.storage.sync.get(['removedExtensions']);
+      const result = await chrome.storage.local.get(['removedExtensions']);
       const existingRemovals = result.removedExtensions || [];
-      
+
       // Add new removals with timestamp
       const newRemovals = removedExtensions.map(ext => ({
         ...ext,
@@ -326,9 +337,9 @@ class ExtensionOrganizer {
       const allRemovals = [...newRemovals, ...existingRemovals].slice(0, 50);
       
       // Save to storage
-      await chrome.storage.sync.set({ removedExtensions: allRemovals });
-      
-      console.log('📝 Tracked removed extensions:', newRemovals);
+      await chrome.storage.local.set({ removedExtensions: allRemovals });
+
+      console.log('[Sync Fix] Tracked removed extensions:', newRemovals);
     } catch (error) {
       console.error('Failed to track removed extensions:', error);
     }
@@ -525,7 +536,7 @@ class ExtensionOrganizer {
     }
 
     // Show failed toggles
-    const failedResult = await chrome.storage.sync.get(['failedToggles']);
+    const failedResult = await chrome.storage.local.get(['failedToggles']);
     if (failedResult.failedToggles && failedResult.failedToggles.length > 0) {
       console.log('🔴 Failed Toggle History:');
       console.table(failedResult.failedToggles);
@@ -594,7 +605,7 @@ class ExtensionOrganizer {
     console.log('🧹 Clean orphaned extensions: await window.organizer.cleanupOrphanedExtensions()');
     console.log('💾 Backup groups: copy(JSON.stringify(window.organizer.groups))');
     console.log('🔄 Restore groups: window.organizer.restoreGroups(YOUR_BACKUP_JSON)');
-    console.log('🗑️ Clear failed toggles: chrome.storage.sync.remove(["failedToggles"])');
+    console.log('🗑️ Clear failed toggles: chrome.storage.local.remove(["failedToggles"])');
     console.log('📊 Storage analysis: await window.webStoreUtils.analyzeStorageUsage()');
 
     console.groupEnd();
@@ -839,7 +850,7 @@ class ExtensionOrganizer {
     }
     
     // Store in chrome.storage.local for persistence and debugging
-    chrome.storage.sync.set({ failedToggles: this.failedToggles });
+    chrome.storage.local.set({ failedToggles: this.failedToggles });
   }
 
   setGroupLoadingState(groupId, isLoading) {

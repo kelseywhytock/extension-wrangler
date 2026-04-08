@@ -85,6 +85,19 @@ class ExtensionWranglerSettings {
         await chrome.storage.sync.remove(['extensionNameCache']);
         console.log('[Sync Fix] Moved extensionNameCache from sync to local storage');
       }
+
+      // One-time: move removedExtensions and failedToggles out of sync storage into local
+      const staleDeviceData = await chrome.storage.sync.get(['removedExtensions', 'failedToggles']);
+      if (staleDeviceData.removedExtensions) {
+        await chrome.storage.local.set({ removedExtensions: staleDeviceData.removedExtensions });
+        await chrome.storage.sync.remove(['removedExtensions']);
+        console.log('[Sync Fix] Moved removedExtensions from sync to local storage');
+      }
+      if (staleDeviceData.failedToggles) {
+        await chrome.storage.local.set({ failedToggles: staleDeviceData.failedToggles });
+        await chrome.storage.sync.remove(['failedToggles']);
+        console.log('[Sync Fix] Moved failedToggles from sync to local storage');
+      }
     } catch (error) {
       console.error('[Web Store Debug] Failed to migrate from local storage:', error);
       // Don't throw - allow the extension to continue with current data
@@ -306,7 +319,7 @@ class ExtensionWranglerSettings {
 
     try {
       // Get existing removal history
-      const result = await chrome.storage.sync.get(['removedExtensions']);
+      const result = await chrome.storage.local.get(['removedExtensions']);
       const existingRemovals = result.removedExtensions || [];
 
       // Add new removals with timestamp
@@ -320,9 +333,9 @@ class ExtensionWranglerSettings {
       const allRemovals = [...newRemovals, ...existingRemovals].slice(0, 50);
 
       // Save to storage
-      await chrome.storage.sync.set({ removedExtensions: allRemovals });
+      await chrome.storage.local.set({ removedExtensions: allRemovals });
 
-      console.log('📝 Tracked removed extensions:', newRemovals);
+      console.log('[Sync Fix] Tracked removed extensions:', newRemovals);
     } catch (error) {
       console.error('Failed to track removed extensions:', error);
     }
@@ -1286,7 +1299,7 @@ class ExtensionWranglerSettings {
 
   async renderRemovedExtensionsHistory() {
     try {
-      const result = await chrome.storage.sync.get(['removedExtensions']);
+      const result = await chrome.storage.local.get(['removedExtensions']);
       const removedExtensions = result.removedExtensions || [];
 
       const container = document.getElementById('removedExtensionsList');
@@ -1344,7 +1357,7 @@ class ExtensionWranglerSettings {
   async clearRemovedExtensionsHistory() {
     if (confirm('Clear all removal history? This cannot be undone.')) {
       try {
-        await chrome.storage.sync.remove(['removedExtensions']);
+        await chrome.storage.local.remove(['removedExtensions']);
         this.renderRemovedExtensionsHistory();
         this.showNotification('Removal history cleared', 'success');
       } catch (error) {

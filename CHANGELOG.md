@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - Task 2: Move removedExtensions and failedToggles to local storage
+
+### Fixed - Sync Quota: Move Device-Specific Debug Data to Local Storage
+
+#### Problem
+`removedExtensions` (orphan cleanup history) and `failedToggles` (toggle error log) were being stored in Chrome sync storage. These are device-specific debug/history items with no cross-device value, and they were consuming sync quota unnecessarily — quota that should be reserved for group data.
+
+#### Changes
+- **`popup.js`** — `trackRemovedExtensions()`: Changed `chrome.storage.sync` to `chrome.storage.local` for reads and writes of `removedExtensions`
+- **`popup.js`** — `checkFailureHistory()`: Changed to read `failedToggles` from `chrome.storage.local` instead of sync; updated log prefix to `[Sync Fix]`
+- **`popup.js`** — `logFailedToggle()`: Changed `chrome.storage.sync.set` to `chrome.storage.local.set` for `failedToggles`
+- **`popup.js`** — `showDebugInfo()`: Changed `failedToggles` read and the help-tip `remove` call to use local storage
+- **`popup.js`** — `migrateFromLocalStorage()`: Removed `failedToggles` from the groups migration block (groups-only migration now); added one-time cleanup block to drain any stale `removedExtensions`/`failedToggles` from sync and move them to local
+- **`settings.js`** — `trackRemovedExtensions()`: Changed sync to local for both the `get` and `set` of `removedExtensions`
+- **`settings.js`** — `renderRemovedExtensionsHistory()`: Changed `chrome.storage.sync.get` to `chrome.storage.local.get` for `removedExtensions`
+- **`settings.js`** — `clearRemovedExtensionsHistory()`: Changed `chrome.storage.sync.remove` to `chrome.storage.local.remove` for `removedExtensions`
+- **`settings.js`** — `migrateFromLocalStorage()`: Added one-time cleanup block to drain stale `removedExtensions`/`failedToggles` from sync into local
+
+#### Affected Files
+- `popup.js` (Task 2 changes)
+- `settings.js` (Task 2 changes)
+
 ## [1.1.1] - 2025-09-26
 ### Fixed - Chrome Web Store Critical Issues Resolution
 
