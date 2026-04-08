@@ -230,7 +230,7 @@ class ExtensionOrganizer {
       if (!this.groups['always-on']) {
         this.groups['always-on'] = {
           id: 'always-on',
-          name: 'Fixed',
+          name: 'Always On',
           extensions: [],
           isDefault: true
         };
@@ -285,7 +285,7 @@ class ExtensionOrganizer {
         this.groups = {
           'always-on': {
             id: 'always-on',
-            name: 'Fixed',
+            name: 'Always On',
             extensions: [],
             isDefault: true
           }
@@ -1156,7 +1156,7 @@ class ExtensionOrganizer {
           <div class="group-info">
             <div class="group-name">
               ${group.name}
-              ${group.isDefault ? '<span class="always-on-badge">FIXED</span>' : ''}
+              ${group.isDefault ? '<span class="always-on-badge">ALWAYS ON</span>' : ''}
             </div>
             <div class="group-stats">
               ${enabledCount}/${group.extensions.length} extensions enabled

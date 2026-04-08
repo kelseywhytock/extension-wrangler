@@ -149,7 +149,7 @@ class ExtensionWranglerSettings {
       if (!this.groups['always-on']) {
         this.groups['always-on'] = {
           id: 'always-on',
-          name: 'Fixed',
+          name: 'Always On',
           extensions: [],
           isDefault: true
         };
@@ -466,6 +466,13 @@ class ExtensionWranglerSettings {
       this.hideGroupModal();
     });
 
+    document.getElementById('deleteGroupBtn').addEventListener('click', () => {
+      if (this.editingGroupId) {
+        this.hideGroupModal();
+        this.deleteGroup(this.editingGroupId);
+      }
+    });
+
     // Search
     document.getElementById('searchInput').addEventListener('input', (e) => {
       this.handleSearch(e.target.value);
@@ -546,15 +553,26 @@ class ExtensionWranglerSettings {
     const modal = document.getElementById('groupModal');
     const title = document.getElementById('modalTitle');
     const nameInput = document.getElementById('groupNameInput');
+    const deleteBtn = document.getElementById('deleteGroupBtn');
+    const saveBtn = document.getElementById('saveBtn');
 
     if (groupId) {
       title.textContent = 'Edit Group';
       nameInput.value = this.groups[groupId].name;
       this.renderExtensionsListForModal(this.groups[groupId].extensions);
+      // Show delete button for non-default groups
+      if (!this.groups[groupId].isDefault) {
+        deleteBtn.style.display = 'inline-block';
+      } else {
+        deleteBtn.style.display = 'none';
+      }
+      saveBtn.textContent = 'Save Changes';
     } else {
       title.textContent = 'Create New Group';
       nameInput.value = '';
       this.renderExtensionsListForModal([]);
+      deleteBtn.style.display = 'none';
+      saveBtn.textContent = 'Save Group';
     }
 
     const modalSearchInput = document.getElementById('modalExtensionSearchInput');
@@ -628,7 +646,7 @@ class ExtensionWranglerSettings {
 
   async deleteGroup(groupId) {
     if (this.groups[groupId].isDefault) {
-      this.showNotification('Cannot delete the Fixed group', 'error');
+      this.showNotification('Cannot delete the Always On group', 'error');
       return;
     }
 
@@ -682,7 +700,7 @@ class ExtensionWranglerSettings {
   }
 
   async enableAllExtensions() {
-    if (!confirm('Are you sure you want to enable all extensions?')) return;
+    if (!confirm(`Enable all ${Object.keys(this.extensions).length} extensions? This will turn on every extension across all groups.`)) return;
 
     let successCount = 0;
     const extensionIds = Object.keys(this.extensions);
@@ -702,7 +720,7 @@ class ExtensionWranglerSettings {
   }
 
   async disableAllExtensions() {
-    if (!confirm('Are you sure you want to disable all extensions? This will also disable Extension Wrangler.')) return;
+    if (!confirm(`Disable all ${Object.keys(this.extensions).length} extensions? This includes Extension Wrangler itself — you will need to re-enable it manually from chrome://extensions.`)) return;
 
     let successCount = 0;
     const extensionIds = Object.keys(this.extensions);
@@ -762,6 +780,15 @@ class ExtensionWranglerSettings {
     }
   }
 
+  updateSelectionCount() {
+    const total = document.querySelectorAll('#extensionsList .checkbox').length;
+    const selected = document.querySelectorAll('#extensionsList .checkbox:checked').length;
+    const counter = document.getElementById('selectionCount');
+    if (counter) {
+      counter.textContent = selected > 0 ? `${selected} of ${total} selected` : `${total} extensions`;
+    }
+  }
+
   renderExtensionsListForModal(selectedExtensions = []) {
     const container = document.getElementById('extensionsList');
     container.innerHTML = '';
@@ -776,33 +803,54 @@ class ExtensionWranglerSettings {
       checkbox.className = 'checkbox';
       checkbox.dataset.extensionId = ext.id;
       checkbox.checked = selectedExtensions.includes(ext.id);
+      checkbox.addEventListener('change', () => this.updateSelectionCount());
 
       const label = document.createElement('label');
       label.className = 'checkbox-label';
-      label.innerHTML = `
-        <img src="${ext.icons && ext.icons.length > 0 ? ext.icons.find(icon => icon.size === 16)?.url || ext.icons[0].url : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSI+PHJlY3Qgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSIjZGFkY2UwIi8+PC9zdmc+'}" width="16" height="16" class="extension-icon" alt="">
-        <span>${ext.name}</span>
-      `;
+
+      const iconSrc = ext.icons && ext.icons.length > 0
+        ? (ext.icons.find(icon => icon.size === 16)?.url || ext.icons[0].url)
+        : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSI+PHJlY3Qgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSIjZGFkY2UwIi8+PC9zdmc+';
+      const img = document.createElement('img');
+      img.src = iconSrc;
+      img.width = 16;
+      img.height = 16;
+      img.className = 'extension-icon';
+      img.alt = '';
+
+      const nameSpan = document.createElement('span');
+      nameSpan.textContent = ext.name;
+
+      label.appendChild(img);
+      label.appendChild(nameSpan);
 
       label.addEventListener('click', () => {
         checkbox.checked = !checkbox.checked;
+        this.updateSelectionCount();
       });
 
       div.appendChild(checkbox);
       div.appendChild(label);
       container.appendChild(div);
     });
+
+    this.updateSelectionCount();
   }
 
   filterExtensionsInModal(query) {
     const containers = document.querySelectorAll('#extensionsList .checkbox-item');
     const lowerQuery = query.toLowerCase();
+    let anyVisible = false;
 
     containers.forEach(container => {
       const extensionName = container.dataset.extensionName;
       const matches = extensionName.includes(lowerQuery);
       container.style.display = matches ? 'flex' : 'none';
+      if (matches) anyVisible = true;
     });
+
+    const emptyMsg = document.getElementById('extensionsEmptySearch');
+    if (emptyMsg) emptyMsg.style.display = anyVisible || !lowerQuery ? 'none' : 'block';
   }
 
   renderAllExtensions() {
@@ -811,7 +859,7 @@ class ExtensionWranglerSettings {
 
     Object.values(this.extensions).forEach(ext => {
       const groups = this.getExtensionGroups(ext.id);
-      const isAlwaysEnabled = groups.includes('Fixed');
+      const isAlwaysEnabled = groups.includes('Always On');
 
       const div = document.createElement('div');
       div.className = 'extension-card';
@@ -881,7 +929,7 @@ class ExtensionWranglerSettings {
     return availableGroups.map(group => `
       <div class="group-dropdown-item" data-group-id="${group.id}" data-extension-id="${extId}">
         ${group.name}
-        ${group.isDefault ? '<span style="color: #34a853; font-size: 11px;">(Fixed)</span>' : ''}
+        ${group.isDefault ? '<span style="color: #34a853; font-size: 11px;">(Always On)</span>' : ''}
       </div>
     `).join('');
   }
@@ -1005,7 +1053,7 @@ class ExtensionWranglerSettings {
 
     // Don't allow dragging the Fixed group
     if (this.groups[draggedId]?.isDefault) {
-      console.log('Cannot drag the Fixed group');
+      console.log('Cannot drag the Always On group');
       return;
     }
 
@@ -1281,7 +1329,7 @@ class ExtensionWranglerSettings {
           </svg>
           <div class="group-name">
             ${group.name}
-            ${group.isDefault ? '<span class="always-on-badge">FIXED</span>' : ''}
+            ${group.isDefault ? '<span class="always-on-badge">ALWAYS ON</span>' : ''}
           </div>
           <div class="group-actions">
             <button class="group-toggle ${toggleState}" data-group-id="${group.id}" title="${toggleState === 'enabled' ? 'Disable all' : 'Enable all'}"></button>

@@ -185,14 +185,15 @@
     .drag-handle {
       width: 16px;
       height: 16px;
-      color: #b0b3b8;
+      color: #9aa0a6;
       flex-shrink: 0;
       margin-right: 4px;
       cursor: grab;
+      transition: color 0.15s;
     }
 
     .group-card[draggable="true"]:hover .drag-handle {
-      color: #5f6368;
+      color: #3c4043;
     }
 
     .group-expand-icon {
@@ -710,16 +711,13 @@
   <div class="container">
     <div class="header">
       <h1>Extension Wrangler</h1>
-      <p>Organize and manage your Chrome extensions with custom groups and bulk controls</p>
     </div>
 
     <div class="main-content">
       <div class="groups-section">
-        <div class="section-title">Extension Management</div>
-
         <div class="tabs">
-          <div class="tab active" data-tab="groups">Extension Groups</div>
-          <div class="tab" data-tab="extensions">Extension List</div>
+          <div class="tab active" data-tab="groups">My Groups</div>
+          <div class="tab" data-tab="extensions">All Extensions</div>
         </div>
 
         <div id="groupsContainer">
@@ -781,21 +779,28 @@
           </div>
         </div>
 
-        <div class="section-subtitle" style="margin-top: 32px;">💡 Tips</div>
-        <div style="background: #f8f9fa; border: 1px solid #e8eaed; border-radius: 8px; padding: 16px; margin-bottom: 24px; font-size: 14px;">
-          <div style="font-weight: 600; color: #1a1a1a; margin-bottom: 8px;">Drag & Drop Reordering</div>
-          <div style="color: #5f6368;">Drag groups by their handle to reorder them. The Fixed group always stays at the bottom.</div>
-        </div>
-
         <div class="section-subtitle">Quick Actions</div>
-        <div style="display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px;">
           <button class="btn btn-success btn-small" id="enableAllBtn">Enable All Extensions</button>
           <button class="btn btn-danger btn-small" id="disableAllBtn">Disable All Extensions</button>
-          <button class="btn btn-secondary btn-small" id="exportBtn">Export Groups</button>
-          <button class="btn btn-secondary btn-small" id="importBtn">Import Groups</button>
+          <button class="btn btn-secondary btn-small" id="exportBtn" title="Save your groups as a JSON file you can restore later">Export Groups</button>
+          <button class="btn btn-secondary btn-small" id="importBtn" title="Load groups from a previously exported JSON file — this will replace your current groups">Import Groups</button>
         </div>
 
-        <div class="section-subtitle" style="margin-top: 32px;">🗑️ Recently Removed</div>
+        <div class="section-subtitle" style="margin-top: 24px;">💡 Tips</div>
+        <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px;">
+          <div style="background: #f8f9fa; border: 1px solid #e8eaed; border-radius: 8px; padding: 12px 14px; font-size: 13px; color: #5f6368; display: flex; gap: 10px; align-items: flex-start;">
+            <span style="font-size: 15px; line-height: 1.3; flex-shrink: 0;">↕</span>
+            <span>Drag the <strong style="color: #3c4043;">⠿</strong> handle on any group to reorder it. The Always On group always stays at the bottom.</span>
+          </div>
+          <div style="background: #f8f9fa; border: 1px solid #e8eaed; border-radius: 8px; padding: 12px 14px; font-size: 13px; color: #5f6368; display: flex; gap: 10px; align-items: flex-start;">
+            <span style="font-size: 15px; line-height: 1.3; flex-shrink: 0;">🔒</span>
+            <span>Add extensions to the <strong style="color: #3c4043;">Always On</strong> group to prevent them from ever being disabled.</span>
+          </div>
+        </div>
+
+        <div class="section-subtitle">🗑️ Auto-removed Extensions</div>
+        <div style="font-size: 12px; color: #5f6368; margin-bottom: 10px;">Extensions automatically removed from groups after being uninstalled.</div>
         <div id="removedExtensionsSection" style="font-size: 14px;">
           <div id="removedExtensionsList" style="max-height: 200px; overflow-y: auto;"></div>
           <button class="btn btn-secondary btn-small" id="clearHistoryBtn" style="margin-top: 12px; width: 100%;">Clear History</button>
@@ -808,13 +813,20 @@
   <div class="modal" id="groupModal">
     <div class="modal-content">
       <div class="modal-header" id="modalTitle">Create New Group</div>
-      <input type="text" class="modal-input" id="groupNameInput" placeholder="Enter group name">
 
-      <div class="section-subtitle">Select Extensions</div>
+      <label for="groupNameInput" style="display: block; font-size: 13px; font-weight: 500; color: #3c4043; margin-bottom: 6px;">Group name</label>
+      <input type="text" class="modal-input" id="groupNameInput" placeholder="e.g. Design Tools, Work, Gaming">
+
+      <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
+        <div class="section-subtitle" style="margin-bottom: 0;">Select Extensions</div>
+        <span id="selectionCount" style="font-size: 12px; color: #5f6368;"></span>
+      </div>
       <input type="text" class="modal-input" id="modalExtensionSearchInput" placeholder="Search extensions...">
       <div class="checkbox-list" id="extensionsList"></div>
+      <div id="extensionsEmptySearch" style="display: none; padding: 24px; text-align: center; color: #5f6368; font-size: 14px;">No extensions match your search.</div>
 
       <div class="modal-actions">
+        <button class="btn btn-danger" id="deleteGroupBtn" style="display: none; margin-right: auto;">Delete Group</button>
         <button class="btn btn-secondary" id="cancelBtn">Cancel</button>
         <button class="btn btn-primary" id="saveBtn">Save Group</button>
       </div>
