@@ -110,12 +110,12 @@
     }
 
     .btn-danger {
-      background: #ea4335;
+      background: #731963;
       color: white;
     }
 
     .btn-danger:hover {
-      background: #d33b2c;
+      background: #5e1450;
     }
 
     .btn-success {
@@ -242,7 +242,7 @@
     }
 
     .group-toggle.enabled {
-      background: #731963;
+      background: #0b3c49;
     }
 
     .group-toggle.disabled {
@@ -250,7 +250,7 @@
     }
 
     .group-toggle.mixed {
-      background: #f0e100;
+      background: #7a9298;
     }
 
     .group-toggle::after {
@@ -302,7 +302,7 @@
     }
 
     .stat-disabled {
-      background: #ea4335;
+      background: #731963;
     }
 
     .stat-total {
@@ -362,7 +362,7 @@
     }
 
     .extension-toggle.enabled {
-      background: #731963;
+      background: #0b3c49;
     }
 
     .extension-toggle.disabled {
@@ -492,7 +492,7 @@
       overflow-y: auto;
       border: 1px solid #cbd2d0;
       border-radius: 8px;
-      padding: 16px;
+      padding: 0 16px;
     }
 
     .checkbox-item {
@@ -510,7 +510,7 @@
     .checkbox {
       width: 20px;
       height: 20px;
-      accent-color: #731963;
+      accent-color: #0b3c49;
     }
 
     .checkbox-label {
@@ -562,8 +562,8 @@
     }
 
     .tab.active {
-      border-bottom-color: #731963;
-      color: #731963;
+      border-bottom-color: #0b3c49;
+      color: #0b3c49;
       background: #f2f5f4;
     }
 
@@ -677,7 +677,7 @@
     }
 
     .notification.error {
-      background: #ea4335;
+      background: #731963;
     }
 
     .notification.warning {
@@ -724,10 +724,10 @@
         <div id="groupsContainer">
           <div class="quick-actions">
             <button class="btn btn-primary" id="createGroupBtn">
-              <span>+ Create New Group</span>
+              <span style="display:flex;align-items:center;gap:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Create New Group</span>
             </button>
             <button class="btn btn-secondary" id="refreshBtn">
-              <span>🔄 Refresh Extensions</span>
+              <span style="display:flex;align-items:center;gap:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>Refresh Extensions</span>
             </button>
           </div>
 
@@ -747,7 +747,7 @@
         <div id="extensionsContainer" class="hidden">
           <div class="quick-actions">
             <button class="btn btn-secondary" id="refreshExtensionsBtn">
-              <span>🔄 Refresh Extensions</span>
+              <span style="display:flex;align-items:center;gap:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>Refresh Extensions</span>
             </button>
           </div>
 
@@ -758,7 +758,10 @@
       </div>
 
       <div class="sidebar">
-        <div class="section-subtitle">✨ Chrome Profile Sync</div>
+        <div class="section-subtitle" style="display:flex;align-items:center;gap:8px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0b3c49" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+          Chrome Profile Sync
+        </div>
         <div id="syncStatusCard" style="background: #f2f5f4; border: 1px solid #cbd2d0; border-radius: 8px; padding: 16px; margin-bottom: 24px; font-size: 12px;">
           <div id="syncStatusTitle" style="font-weight: 600; margin-bottom: 8px; color: #4a5a5e;">Checking sync status...</div>
           <div id="syncStatusBody" style="color: #4a5a5e;">Verifying connection to Chrome Sync.</div>
@@ -788,19 +791,25 @@
           <button class="btn btn-secondary btn-small" id="importBtn" title="Load groups from a previously exported JSON file — this will replace your current groups">Import Groups</button>
         </div>
 
-        <div class="section-subtitle" style="margin-top: 24px;">💡 Tips</div>
+        <div class="section-subtitle" style="margin-top: 24px; display:flex; align-items:center; gap:8px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0b3c49" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Tips
+        </div>
         <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px;">
           <div style="background: #f2f5f4; border: 1px solid #cbd2d0; border-radius: 8px; padding: 12px 14px; font-size: 13px; color: #4a5a5e; display: flex; gap: 10px; align-items: flex-start;">
-            <span style="font-size: 15px; line-height: 1.3; flex-shrink: 0;">↕</span>
-            <span>Drag the <strong style="color: #0b3c49;">⠿</strong> handle on any group to reorder it. The Fixed / Always On group always stays at the bottom.</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7a9298" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><polyline points="17 11 12 6 7 11"/><polyline points="17 18 12 13 7 18"/></svg>
+            <span>Drag the <strong style="color: #0b3c49;">⠿</strong> handle on any group to reorder it. The Always On group always stays at the bottom.</span>
           </div>
           <div style="background: #f2f5f4; border: 1px solid #cbd2d0; border-radius: 8px; padding: 12px 14px; font-size: 13px; color: #4a5a5e; display: flex; gap: 10px; align-items: flex-start;">
-            <span style="font-size: 15px; line-height: 1.3; flex-shrink: 0;">🔒</span>
-            <span>Add extensions to the <strong style="color: #0b3c49;">Fixed / Always On</strong> group to prevent them from ever being disabled.</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#731963" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+            <span>Add extensions to the <strong style="color: #731963;">Always On</strong> group to prevent them from ever being disabled.</span>
           </div>
         </div>
 
-        <div class="section-subtitle">🗑️ Uninstalled Extensions</div>
+        <div class="section-subtitle" style="display:flex;align-items:center;gap:8px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0b3c49" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+          Uninstalled Extensions
+        </div>
         <div style="font-size: 12px; color: #4a5a5e; margin-bottom: 10px;">Extensions automatically removed from groups after being uninstalled.</div>
         <div id="removedExtensionsSection" style="font-size: 14px;">
           <div id="removedExtensionsList" style="max-height: 200px; overflow-y: auto;"></div>

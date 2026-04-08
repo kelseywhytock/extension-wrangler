@@ -867,15 +867,15 @@ class ExtensionWranglerSettings {
     if (!card || !title || !body) return;
 
     if (operational) {
-      card.style.background = '#e8f0fe';
-      card.style.borderColor = '#4285f4';
-      title.style.color = '#1558d6';
+      card.style.background = '#e0ecee';
+      card.style.borderColor = '#0b3c49';
+      title.style.color = '#0b3c49';
       title.textContent = 'Your groups sync across devices!';
       body.textContent = 'Settings are automatically synchronized with your Chrome profile and available on all your devices.';
     } else {
-      card.style.background = '#fef7e0';
-      card.style.borderColor = '#f9ab00';
-      title.style.color = '#7a5900';
+      card.style.background = '#f5edf2';
+      card.style.borderColor = '#731963';
+      title.style.color = '#731963';
       title.textContent = 'Sync is currently unavailable';
       body.textContent = 'Sign into Chrome with the same Google account on all devices and enable Sync > Extensions to sync your groups.';
     }
@@ -887,21 +887,37 @@ class ExtensionWranglerSettings {
     const banner = document.createElement('div');
     banner.id = 'syncWarningBanner';
     banner.style.cssText = [
-      'background:#fef7e0',
-      'border:1px solid #f9ab00',
+      'background:#f5edf2',
+      'border:1px solid #731963',
       'border-radius:6px',
       'padding:12px 16px',
       'margin:0 0 16px 0',
       'font-size:13px',
-      'color:#7a5900',
+      'color:#4a1040',
       'display:flex',
       'align-items:flex-start',
       'gap:10px'
     ].join(';');
 
-    const icon = document.createElement('span');
-    icon.style.cssText = 'font-size:18px;line-height:1.2';
-    icon.textContent = '\u26A0\uFE0F';
+    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    icon.setAttribute('width', '18');
+    icon.setAttribute('height', '18');
+    icon.setAttribute('viewBox', '0 0 24 24');
+    icon.setAttribute('fill', 'none');
+    icon.setAttribute('stroke', '#731963');
+    icon.setAttribute('stroke-width', '2');
+    icon.setAttribute('stroke-linecap', 'round');
+    icon.setAttribute('stroke-linejoin', 'round');
+    icon.style.cssText = 'flex-shrink:0;margin-top:1px';
+    const tri = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    tri.setAttribute('d', 'M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z');
+    const line1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line1.setAttribute('x1', '12'); line1.setAttribute('y1', '9');
+    line1.setAttribute('x2', '12'); line1.setAttribute('y2', '13');
+    const line2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line2.setAttribute('x1', '12'); line2.setAttribute('y1', '17');
+    line2.setAttribute('x2', '12.01'); line2.setAttribute('y2', '17');
+    icon.appendChild(tri); icon.appendChild(line1); icon.appendChild(line2);
 
     const textWrap = document.createElement('span');
 
@@ -910,7 +926,7 @@ class ExtensionWranglerSettings {
 
     const link = document.createElement('a');
     link.href = '#';
-    link.style.color = '#1558d6';
+    link.style.color = '#0b3c49';
     link.textContent = 'Chrome settings';
     link.addEventListener('click', (e) => {
       e.preventDefault();
