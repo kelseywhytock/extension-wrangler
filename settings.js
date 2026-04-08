@@ -13,8 +13,8 @@ class ExtensionWranglerSettings {
     console.log('🚀 Initializing Extension Wrangler Settings...');
 
     try {
-      await this.loadData();
       await this.loadExtensions();
+      await this.loadData();
       this.setupEventListeners();
       this.render();
 
