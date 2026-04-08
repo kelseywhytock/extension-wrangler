@@ -84,7 +84,7 @@ async function handleExtensionStateChange(extensionId, enabled) {
 }
 
 // Provide API for popup to communicate with background script
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   if (request.action === 'getExtensions') {
     chrome.management.getAll().then(extensions => {
       sendResponse({ extensions });

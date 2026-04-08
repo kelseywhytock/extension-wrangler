@@ -746,37 +746,6 @@ class ExtensionWranglerSettings {
     expandIcon.classList.toggle('expanded');
   }
 
-  async moveGroup(groupId, direction) {
-    const index = this.groupOrder.indexOf(groupId);
-    if (index === -1) return;
-
-    const newIndex = direction === 'up' ? index - 1 : index + 1;
-
-    // Prevent moving the first item up or the last item down
-    if (newIndex < 0 || newIndex >= this.groupOrder.length) {
-      return;
-    }
-
-    // Prevent moving into the 'Fixed' group spot if it's at the end
-    const targetId = this.groupOrder[newIndex];
-    if (this.groups[targetId] && this.groups[targetId].isDefault) {
-        console.log("Cannot move group past the 'Fixed' group.");
-        return;
-    }
-
-
-    // Swap elements
-    const newOrder = [...this.groupOrder];
-    const temp = newOrder[index];
-    newOrder[index] = newOrder[newIndex];
-    newOrder[newIndex] = temp;
-
-    this.groupOrder = newOrder;
-    await this.saveGroupOrder();
-    this.render();
-    this.showNotification('Group order updated', 'success');
-  }
-
   async reorderGroups(draggedId, targetId) {
     // Enhanced debugging for drag and drop issues
     console.log(`[Drag Debug] Attempting reorder:`, {

@@ -659,7 +659,7 @@ class ExtensionOrganizer {
       this.failedToggles = this.failedToggles.slice(-50);
     }
     
-    // Store in chrome.storage.local for persistence and debugging
+    // Stored for diagnostic inspection via showDebugInfo() — not used to trigger automatic retries.
     chrome.storage.local.set({ failedToggles: this.failedToggles });
   }
 

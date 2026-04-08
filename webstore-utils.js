@@ -228,11 +228,11 @@ class WebStoreUtils {
     const quotaInfo = await this.checkSyncStorageQuota();
     const storageAnalysis = await this.analyzeStorageUsage();
     const optimalStorage = await this.getOptimalStorageAPI();
-    const syncStatus = await this.checkSyncStatus();  // ADD THIS LINE
+    const syncStatus = await this.checkSyncStatus();
 
     const diagnostics = {
       installationType: isWebStore ? 'Chrome Web Store' : 'Development/Manual',
-      syncStatus,                    // ADD THIS LINE
+      syncStatus,
       quotaStatus: quotaInfo,
       storageUsage: storageAnalysis,
       recommendedStorage: optimalStorage,
